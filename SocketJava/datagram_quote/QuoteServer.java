@@ -2,7 +2,7 @@ import java.io.*;
 import java.net.*;
 
 class QuoteServer {
-    static final String[] quotations = { 
+    static final String[] quotations = {
       "Adoro i piani ben riusciti",
       "Quel tappeto dava veramente un tono all'ambiente",
       "Se ci riprovi ti stacco un braccio",
@@ -32,21 +32,23 @@ class QuoteServer {
                 ds.receive(reqPacket);
 
                 // estraggo la stringa dal messaggio
-                String request = new String(reqPacket.getData(), 0, 
+                String request = new String(reqPacket.getData(), 0, //0 e reqBuf.length è per dire dove
+                //inizia e finisce altrimenti prenderebbe tutti i 2048 byte
                                             reqPacket.getLength(), "UTF-8");
 
                 // verifico che richiesta sia valida
+                //con nc6 manderei anche il terminatore /n quindi devo stare attento
                 if (request.equals("QUOTE")) {
                     // ottengo prossima quote
                     String quote = quotations[ index % quotations.length ];
 
                     // converto la quote da stinga a sequenza di byte
                     byte[] respBuf = quote.getBytes("UTF-8");
-                     
+
                     // preparo il datagram packet di risposta
-                    DatagramPacket respPacket = 
+                    DatagramPacket respPacket =
                         new DatagramPacket(respBuf, respBuf.length,
-                                           reqPacket.getAddress(), 
+                                           reqPacket.getAddress(),
                                            reqPacket.getPort());
 
                     // e lo trasmetto al client

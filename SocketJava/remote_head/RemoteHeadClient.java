@@ -11,10 +11,10 @@ class RemoteHeadClient {
         }
 
         try {
-            // 
+            //
             Socket s = new Socket(args[0], Integer.parseInt(args[1]));
 
-            BufferedReader netIn = 
+            BufferedReader netIn =
                 new BufferedReader(new InputStreamReader(s.getInputStream(), "UTF-8"));
             BufferedWriter netOut =
                 new BufferedWriter(new OutputStreamWriter(s.getOutputStream(), "UTF-8"));
