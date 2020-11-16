@@ -1,0 +1,45 @@
+# Makefile creato a partire dal template generato da rpcgen
+
+# Parameters
+
+CLIENT = rls_client
+SERVER = rls_server
+
+SOURCES_CLNT.c = rls_client_impl.c
+SOURCES_CLNT.h =
+SOURCES_SVC.c = rls_server_impl.c
+SOURCES_SVC.h =
+SOURCES.x = rls.x
+
+TARGETS_SVC.c = rls_svc.c rls_xdr.c
+TARGETS_CLNT.c = rls_clnt.c rls_xdr.c
+TARGETS = rls.h rls_xdr.c rls_clnt.c rls_svc.c
+
+OBJECTS_CLNT = $(SOURCES_CLNT.c:%.c=%.o) $(TARGETS_CLNT.c:%.c=%.o)
+OBJECTS_SVC = $(SOURCES_SVC.c:%.c=%.o) $(TARGETS_SVC.c:%.c=%.o)
+# Compiler flags
+
+CFLAGS += -g
+LDLIBS += -lnsl
+RPCGENFLAGS =
+
+# Targets
+
+all : $(CLIENT) $(SERVER)
+
+$(TARGETS) : $(SOURCES.x)
+	rpcgen $(RPCGENFLAGS) $(SOURCES.x)
+
+$(OBJECTS_CLNT) : $(SOURCES_CLNT.c) $(SOURCES_CLNT.h) $(TARGETS_CLNT.c)
+
+$(OBJECTS_SVC) : $(SOURCES_SVC.c) $(SOURCES_SVC.h) $(TARGETS_SVC.c)
+
+$(CLIENT) : $(OBJECTS_CLNT)
+	$(LINK.c) -o $(CLIENT) $(OBJECTS_CLNT) $(LDLIBS)
+
+$(SERVER) : $(OBJECTS_SVC)
+	$(LINK.c) -o $(SERVER) $(OBJECTS_SVC) $(LDLIBS)
+
+clean:
+	$(RM) core $(TARGETS) $(OBJECTS_CLNT) $(OBJECTS_SVC) $(CLIENT) $(SERVER)
+

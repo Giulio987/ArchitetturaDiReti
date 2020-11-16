@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+// E' possibile specificare diversi option code
+// In questo caso specifichiamo il java package name
+// in modo tale che i file generati dalla compilazione
+// abbiano un determinato package name
+// Altre opzioni sono disponibili per specificare
+// namespace, etc.
+option java_package = "it.unife.reti.grpc.example";
+
+service RemoteLs {
+	rpc Ls (DirName) returns (FileList) {}
+}
+
+//messaggio di input al servizio
+message DirName {
+	string name = 1;
+}
+
+// messaggio di output, risultato della chiamata a 
+// procedura remota (lista di file) 
+message FileList {
+	repeated string file = 1;
+}

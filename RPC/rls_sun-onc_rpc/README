@@ -1,0 +1,32 @@
+ISTRUZIONI PER L'USO
+====================
+
+0) verificare che portmap (o rpcbind) sia in esecuzione sulla macchina
+
+
+1) generare codice di stub client, stub server, e XDR:
+
+rpcgen -a -C rls.x
+
+
+2) compilare
+
+Su Linux:
+
+make
+
+Su OS X:
+
+make -f Makefile.osx
+
+
+3) eseguire il server (in una console):
+
+./rls_server
+
+
+4) eseguire il client (in un'altra console):
+
+./rls_client localhost nome_directory
+
+

@@ -1,0 +1,14 @@
+Per compilare:
+
+	gradle installDist
+
+
+Per lanciare il server:
+
+	./build/install/grpc_examples/bin/rls_server
+
+
+Per lanciare il client:
+
+	./build/install/grpc_examples/bin/rls_client percorso
+
