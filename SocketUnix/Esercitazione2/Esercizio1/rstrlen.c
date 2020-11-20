@@ -59,5 +59,6 @@ int main(int argc, char **argv){
         printf("Inserire la frase\n ");
         scanf("%s", buf);
     }
+    close(sd);
     return 0;
 }
