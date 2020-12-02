@@ -9,14 +9,14 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include "utils.h"
+#define MAXLENGTH 500
 
 int main(int argc, char **argv)
 {
-    int sd, err;
+    int sd, err, ret;
     char buff[2048];
     struct addrinfo hints, *res;
-
+    char response[MAXLENGTH];
     if (argc != 2)
     {
         fprintf(stderr, "Inserire i numero di porta come argomento\n");
@@ -32,7 +32,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "Errore setup indirizzo bind: %s\n", gai_strerror(err));
         exit(EXIT_FAILURE);
     }
-    if ((sd = socket(res->ai_addr, res->ai_socktype, res->ai_protocol)) < 0)
+    if ((sd = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) < 0)
     {
         perror("Errore in socket");
         exit(EXIT_FAILURE);
@@ -43,6 +43,10 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
     freeaddrinfo(res);
+    if (listen(sd, SOMAXCONN) < 0) {
+        perror("listen");
+        exit(EXIT_FAILURE);
+    }
     while (1)
     {
         int fd, ns, nread;
@@ -61,15 +65,15 @@ int main(int argc, char **argv)
             perror("Errore in accept");
             exit(EXIT_FAILURE);
         }
-
+        
         memset(buff, 0, sizeof(buff));
         while ((nread = read(ns, buff, sizeof(buff) - 1)) > 0){
-            char ret[] = itoa(strlen(buff));
-            
-            if (write(ns, ret, sizeof(ret)) < 0)
+            ret = strnlen(buff,sizeof(buff));
+            snprintf(response,sizeof(response),"%d\n", ret);
+            if (write(ns, response, strlen(response)) < 0)
             {
-            perror("Errore in write");
-            close(ns);
+                perror("Errore in write");
+                close(ns);
             }
         }
         close(ns);
