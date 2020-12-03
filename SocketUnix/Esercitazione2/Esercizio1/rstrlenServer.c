@@ -49,7 +49,7 @@ int main(int argc, char **argv)
     }
     while (1)
     {
-        int fd, ns, nread;
+        int ns, nread;
         struct sockaddr_storage client_address;
         socklen_t fromlen;
 
@@ -78,5 +78,6 @@ int main(int argc, char **argv)
         }
         close(ns);
     }
+    close(sd);
     return 0;
 }
