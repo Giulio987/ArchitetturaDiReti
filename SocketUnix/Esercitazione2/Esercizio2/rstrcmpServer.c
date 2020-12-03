@@ -12,7 +12,7 @@
 #define MAXLEN 2048
 
 int main(int argc, char **argv){
-    int sd, nread, err;
+    int sd, nread, err, on;
     struct addrinfo hints, *res;
     char frase1[MAXLEN], frase2[MAXLEN];
 
@@ -34,6 +34,11 @@ int main(int argc, char **argv){
     if((sd = socket(res->ai_family,res->ai_socktype, res->ai_protocol)) < 0){
         perror("Crerazione socket\n");
         exit(2);
+    }
+    on = 1;
+    if (setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0){
+        perror("setsockopt");
+        exit(EXIT_FAILURE);
     }
     if(bind(sd, res->ai_addr, res->ai_addrlen) < 0){
         perror("BIND\n");

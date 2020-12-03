@@ -46,7 +46,8 @@ int main(int argc, char **argv){
         perror("Probema write 1\n");
         exit(4);
     }
-    if (read(sd, ACK, strlen(ACK)) < 0) {
+    memset(ACK,0, sizeof(ACK));
+    if (read(sd, ACK, sizeof(ACK)-1) < 0) {
         perror("ACK");
         exit(EXIT_FAILURE);
     }

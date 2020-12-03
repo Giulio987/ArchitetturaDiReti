@@ -13,7 +13,7 @@
 
 int main(int argc, char **argv)
 {
-    int sd, err, ret;
+    int sd, err, ret, on;
     char buff[2048];
     struct addrinfo hints, *res;
     char response[MAXLENGTH];
@@ -37,12 +37,19 @@ int main(int argc, char **argv)
         perror("Errore in socket");
         exit(EXIT_FAILURE);
     }
+    on = 1;
+    if (setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0){
+        perror("setsockopt");
+        exit(EXIT_FAILURE);
+    }
+    
     if (bind(sd, res->ai_addr, res->ai_addrlen) < 0)
     {
         perror("Errore in bind");
         exit(EXIT_FAILURE);
     }
     freeaddrinfo(res);
+
     if (listen(sd, SOMAXCONN) < 0) {
         perror("listen");
         exit(EXIT_FAILURE);

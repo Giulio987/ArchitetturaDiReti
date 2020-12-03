@@ -47,11 +47,14 @@ int main(int argc, char **argv){
     printf("Inserire la frase\n");
     scanf("%s", buf);
     while(strcmp(buf,"fine")){
-        if (write(sd, buf,sizeof(buf))<0){
+        //assumo che la stringa venga scritta tutta e catturata
+        //tutta dalla read dell'altra parte e viceversa
+        if (write(sd, buf, strlen(buf)) < 0){
             perror("WRITE SOCKET\n");
             exit(2);
         }
-        if(read(sd, resp, sizeof(resp)) < 0 ){
+        memset(resp, 0, sizeof(resp));
+        if(read(sd, resp, sizeof(resp)-1) < 0 ){
             perror("ERRORE READ INPUT\n");
             exit(3);
         }
