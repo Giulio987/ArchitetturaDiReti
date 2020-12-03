@@ -76,12 +76,13 @@ int main(int argc, char **argv)
 	for (;;) {
 		/* Leggo stringa di richiesta */
 		puts("Inserisci stringa di richiesta:");
+                //fgets prende anche /n
 		if (fgets(request, sizeof(request), stdin) == NULL) {
 			perror("fgets");
 			exit(EXIT_FAILURE);
 		}
 		
-		/* Invio richiesta al Server */
+		/* Invio richiesta al Server compreso il /n*/
 		if (write_all(sd, request, strlen(request)) < 0) { 
 			perror("write");
 			exit(EXIT_FAILURE);
@@ -95,7 +96,8 @@ int main(int argc, char **argv)
 		memset(response, 0, sizeof(response));
 		response_len = sizeof(response)-1;
 
-		/* Ricezione risultato */
+		/* Ricezione risultato quando arrivo a un /n si blocca e su response_len saprò
+                quanto resposne avrò utilizzato-> se readline è < 0vuol dire che ho letto EOF e esco */
 		if (rxb_readline(&rxb, sd, response, &response_len) < 0) {
 			/* Se sono qui, è perché ho letto un EOF. Significa che
 			 * il Server ha chiuso la connessione, per cui dealloco

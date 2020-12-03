@@ -110,7 +110,9 @@ int main(int argc, char **argv)
                         /* Chiudo la socket passiva */
                         close(sd);
 
-			/* Leggo lunghezza stringa1 */
+			/* Leggo lunghezza stringa1 
+                           Usando length prefix data io so quanto sto dando
+                           e con read_all gli dico di prendere tutto*/
                         if (read_all(ns, len, 2) < 0) {
                                 perror("read");
                                 exit(EXIT_FAILURE);
@@ -125,7 +127,10 @@ int main(int argc, char **argv)
 			 * dim_stringa1 < sizeof(stringa1), quindi sono sicuro
 			 * che il buffer sarà sempre null-terminated. In questo
 			 * modo, posso interpretarlo come una stringa C e
-			 * passarlo direttamente alla funzione strcmp. */
+			 * passarlo direttamente alla funzione strcmp. 
+                         * 
+                         * dimstringa < stringa1 sicuramente ecco perche non gli do uno
+                         * sizeof ma gli dico esattamente cosa prendere*/
                         memset(stringa1, 0, sizeof(stringa1));
                         if (read_all(ns, stringa1, dim_stringa1) < 0) {
                                 perror("read");

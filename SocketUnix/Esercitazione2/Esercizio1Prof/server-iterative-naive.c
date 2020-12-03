@@ -86,6 +86,13 @@ int main(int argc, char **argv)
                 memset(request, 0, sizeof(request));
 
 		/* Leggo richiesta da Client */
+                //per non incappare in buffer overflow
+                //cosi garantisco che ci sia la terminazione
+                // [***0]
+                //   vs
+                // [****]****
+                //perchè qui gli do tutto il buffer ma sono sicuro almeno
+                //che cosi l'ultimo sarà a 0
                 if ((nread = read(ns, request, sizeof(request)-1)) < 0){
                         perror("read");
                         close(ns);
