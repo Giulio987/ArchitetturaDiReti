@@ -8,18 +8,38 @@
 #include <errno.h>
 #include <sys/wait.h>
 
+void handler(int signo)
+{
+    int status;
+
+    (void)signo;
+
+    /* gestisco tutti i figli terminati */
+    while (waitpid(-1, &status, WNOHANG) > 0)
+        continue;
+}
+
 int main(int argc, char **argv)
 {
     int sd, err, on;
     struct addrinfo hints, *res;
     typedef int pipe_t[2];
+    struct sigaction sa;
+
     /* Controllo argomenti */
-    
     if (argc != 2)
     {
-        fprintf(stderr, "Sintassi: %s porta\n", argv[0]);
+        fprintf(stderr, "Uso: %s porta\n", argv[0]);
         exit(EXIT_FAILURE);
     }
+
+    sigemptyset(&sa.sa_mask);
+    /* uso SA_RESTART per evitare di dover controllare esplicitamente se
+         * accept è stata interrotta da un segnale e in tal caso rilanciarla
+         * (si veda il paragrafo 21.5 del testo M. Kerrisk, "The Linux
+         * Programming Interface") */
+    sa.sa_flags = SA_RESTART;
+    sa.sa_handler = handler;
 
     /* Preparo direttive getaddrinfo */
     memset(&hints, 0, sizeof(hints));
@@ -27,7 +47,7 @@ int main(int argc, char **argv)
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
-    
+
     if ((err = getaddrinfo(NULL, argv[1], &hints, &res)) < 0)
     {
         fprintf(stderr, "Errore recupero informazioni\n");
@@ -55,24 +75,24 @@ int main(int argc, char **argv)
         perror("Listen\n");
         exit(5);
     }
-   
-                
+
     for (;;)
     {
         char request[2048], response[4096];
         int ns, nread, pid, status;
         pipe_t p1ps;
         ns = accept(sd, NULL, NULL);
-        
+
         if (ns < 0)
         {
-            if (errno == EINTR){
+            if (errno == EINTR)
+            {
                 continue;
             }
             perror("accept");
             exit(EXIT_FAILURE);
         }
-        
+
         memset(request, 0, sizeof(request));
         if ((nread = read(ns, request, sizeof(request) - 1)) < 0)
         {
@@ -80,9 +100,9 @@ int main(int argc, char **argv)
             close(ns);
             continue;
         }
-        
-        
-        if(pipe(p1ps) < 0){
+
+        if (pipe(p1ps) < 0)
+        {
             perror("Pipe");
             exit(4);
         }
@@ -101,15 +121,15 @@ int main(int argc, char **argv)
                 execlp("ps", "ps", (char *)0);
             }
             else
-            {   
+            {
                 execlp("ps", "ps", request, (char *)0);
             }
             perror("execlp");
             exit(7);
         }
         close(p1ps[1]);
-        memset(response, 0 , sizeof(response));
-        while ((nread = read(p1ps[0], response, sizeof(response) )) < 0)
+        memset(response, 0, sizeof(response));
+        while ((nread = read(p1ps[0], response, sizeof(response))) < 0)
         {
             perror("readPipe");
             close(ns);
