@@ -110,31 +110,25 @@ int main(int argc, char **argv)
         }
         else if (pid == 0)
         {
-            int fd;
-            rxb_t rxb;
+            int fd, nread;
             char nomeFile[MAX_REQUEST_SIZE], stringa[MAX_REQUEST_SIZE];
             /* figlio */
             close(sd); //chiudo socket passiva
 
             /* Inizializzo buffer di ricezione */
-            rxb_init(&rxb, MAX_REQUEST_SIZE);
-
-            size_t nomeFile_len, stringa_len;
 
             memset(nomeFile, 0, sizeof(nomeFile));
-            nomeFile_len = sizeof(nomeFile) - 1;
-            
+        
             /* Leggo richiesta da Client */
-            if (rxb_readline(&rxb, ns, nomeFile, &nomeFile_len) < 0)
+            if ((nread = read(ns, nomeFile, sizeof(nomeFile)-1)) < 0)
             {
-                rxb_destroy(&rxb);
                 close(ns); //quindi chiudo la socket attiva esco
                 continue;
             }
-            
             /* Per controllare se il file esiste, provo ad aprirlo */
             if ((fd = open(nomeFile, O_RDONLY)) < 0)
             {
+                perror("errore apertura file\n");
                 close(ns); //se il file non esiste chiudo la connessione
                 continue;
             }
@@ -149,12 +143,8 @@ int main(int argc, char **argv)
             }
             //ricevo la srtringa
             memset(stringa, 0, sizeof(stringa));
-            stringa_len = sizeof(stringa) - 1;
-
-            /* Leggo stringa da Client */
-            if (rxb_readline(&rxb, ns, stringa, &stringa_len) < 0)
+            if ((nread = read(ns, stringa,sizeof(stringa)-1)) < 0)
             {
-                rxb_destroy(&rxb);
                 close(ns); //quindi chiudo la socket attiva esco
                 continue;
             }

@@ -50,15 +50,25 @@ int main(int argc, char **argv)
 
 	if (argc == 4)
 	{
-		snprintf(request, sizeof(argv[3]), "%s", argv[3]);
+		snprintf(request, strlen(argv[3]), "%s", argv[3]);
 	}
-	
+	/*uso strlen perchè:
+	* argv[3] = ['a','u','x','/0']
+	* strlen(argv[3]) = 3
+	* sizeof(argv[3]) = 4 su macchina a 32 bit e 8 su macchina a 64 e se
+	* avessi un argv[4] metteerebbe anche quello dentro
+	*/
 	if (write(sd, request, strlen(request)) < 0)
 	{
 		perror("Write 1\n");
 		exit(3);
 	}
+	/* non posso assumere che vengano catturati con una sola read-> una read 1500 byte
+	* di solito -> ammettendo 36000 byte dda trasferire(1 byte 1 carattere qua)
+	* non posso con una sola read
+	*/
 	memset(response, 0, sizeof(response));
+	/*approccio naive-> leggo fino a che non viene chiusa la socket lato server)*/
 	while ((nread = read(sd, response, sizeof(response) - 1)) > 0){
 		fprintf(stdout, "%s\n", response);
 	}

@@ -11,9 +11,9 @@
 
 int main(int argc, char **argv)
 {
-    int err;
+    int err, nread;
     struct addrinfo hints, *res, *ptr;
-    int sd, i = 1;
+    int sd;
     rxb_t rxb;
     char response[MAX_REQUEST_SIZE];
     size_t response_len;
@@ -47,10 +47,8 @@ int main(int argc, char **argv)
         /*se connect funziona esco dal ciclo*/
         if (connect(sd, ptr->ai_addr, ptr->ai_addrlen) == 0)
         {
-            printf("connect riuscita al tentativo %d\n", i);
             break;
         }
-        i++;
         close(sd);
     }
 
@@ -64,43 +62,47 @@ int main(int argc, char **argv)
     /* Liberiamo la memoria allocata da getaddrinfo() */
     freeaddrinfo(res);
 
-    /* Inizializzo buffer di ricezione */
-    rxb_init(&rxb, MAX_REQUEST_SIZE);
-
     /* Invio nome del file al server per la verifica*/
+
     if (write_all(sd, argv[4], strlen(argv[4])) < 0)
     {
         perror("write");
         exit(EXIT_FAILURE);
     }
+    /* 
+    * Ricezione risultato 
+    * Inizializzo buffer di ricezione 
+    */
+    rxb_init(&rxb, MAX_REQUEST_SIZE);
+
     memset(response, 0, sizeof(response));
     response_len = sizeof(response) - 1;
-    
-    /* Ricezione risultato 
-    */
+
+    //FUNZIONE che termina solo quando trova /n ma qui non
+    //lo trova CAZZO!!! perche non c'era
     if (rxb_readline(&rxb, sd, response, &response_len) < 0)
     {
         rxb_destroy(&rxb);
         fprintf(stderr, "File non trovato, connessione chiusa\n");
         exit(EXIT_FAILURE);
     }
-    
+
     //comunico al server la stringa da ricercare
     if (write_all(sd, argv[3], strlen(argv[3])) < 0)
     {
         perror("write");
         exit(EXIT_FAILURE);
     }
-     /*shutdown(sd, SHUT_WR);
+    /*shutdown(sd, SHUT_WR);
 
     fflush(stdout);*/
     //recupero Informazioni server
+    //anche qui non va bene xread perche 
+    //ho degli /n
     memset(response, 0, sizeof(response));
-    response_len = sizeof(response) - 1;
-    if (rxb_readline(&rxb, sd, response, &response_len) < 0)
+    if ((nread = read(sd, response, sizeof(response) - 1)) < 0)
     {
-        rxb_destroy(&rxb);
-        fprintf(stderr, "Connessione chiusa dal server\n");
+        perror("read\n");
         exit(EXIT_FAILURE);
     }
     /* Stampo riga letta da Server */

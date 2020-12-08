@@ -77,7 +77,12 @@ int main(int argc, char** argv){
         /* È consigliabile effettuare il flushing del buffer di printf
          * prima di iniziare a scrivere sullo standard output con write */
         fflush(stdout);
-
+        /*approccio naive-> leggo fino a che non viene chiusa la socket lato server)*/
+        /* non posso assumere che vengano catturati con una sola read-> una read 1500 byte
+	* di solito -> ammettendo 36000 byte dda trasferire(1 byte 1 carattere qua)
+	* non posso con una sola read
+	*/
+        
         while ((nread = read(sd, buf, DIM)) > 0) {
                 if (write(1, buf, nread) < 0) {
                         perror("write su stdout");
