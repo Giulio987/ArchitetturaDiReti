@@ -31,9 +31,10 @@ void handler(int signo)
 int main(int argc, char **argv)
 {
     struct addrinfo hints, *res;
-    int err, sd, ns, pid, on;
+    int err, sd, ns, pid, on, status ;
     struct sigaction sa;
-    char *ack = "ACK\n";
+    const char *ack = "ACK\n";
+    const char *end_request = "\n--- END REQUEST ---\n";
     /* Controllo argomenti */
     if (argc != 2)
     {
@@ -118,9 +119,9 @@ int main(int argc, char **argv)
             /* Inizializzo buffer di ricezione */
 
             memset(nomeFile, 0, sizeof(nomeFile));
-        
+
             /* Leggo richiesta da Client */
-            if ((nread = read(ns, nomeFile, sizeof(nomeFile)-1)) < 0)
+            if ((nread = read(ns, nomeFile, sizeof(nomeFile) - 1)) < 0)
             {
                 close(ns); //quindi chiudo la socket attiva esco
                 continue;
@@ -135,7 +136,7 @@ int main(int argc, char **argv)
             /* Chiudo il file, che a questo punto sono certo che esista */
             close(fd);
             //Invio un ACK al client
-            
+
             if (write_all(ns, ack, strlen(ack)) < 0)
             {
                 perror("write");
@@ -143,7 +144,7 @@ int main(int argc, char **argv)
             }
             //ricevo la srtringa
             memset(stringa, 0, sizeof(stringa));
-            if ((nread = read(ns, stringa,sizeof(stringa)-1)) < 0)
+            if ((nread = read(ns, stringa, sizeof(stringa) - 1)) < 0)
             {
                 close(ns); //quindi chiudo la socket attiva esco
                 continue;
@@ -164,6 +165,12 @@ int main(int argc, char **argv)
         }
         /* PADRE */
         /* Chiudo la socket attiva */
+        wait(&status);
+        if (write_all(ns, end_request, strlen(end_request)) < 0)
+        {
+            perror("write");
+            exit(EXIT_FAILURE);
+        }
         close(ns);
     }
     /* Chiudo la socket passiva (just in case) */

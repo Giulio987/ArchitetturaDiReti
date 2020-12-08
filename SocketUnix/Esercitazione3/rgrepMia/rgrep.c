@@ -15,7 +15,7 @@ int main(int argc, char **argv)
     struct addrinfo hints, *res, *ptr;
     int sd;
     rxb_t rxb;
-    char response[MAX_REQUEST_SIZE];
+    char response[MAX_REQUEST_SIZE], ack[2048];
     size_t response_len;
     /* Controllo argomenti */
     if (argc < 2)
@@ -62,28 +62,21 @@ int main(int argc, char **argv)
     /* Liberiamo la memoria allocata da getaddrinfo() */
     freeaddrinfo(res);
 
-    /* Invio nome del file al server per la verifica*/
+    /* Inizializzo buffer di ricezione */
+    rxb_init(&rxb, MAX_REQUEST_SIZE);
 
+    /* Invio nome del file al server per la verifica*/
     if (write_all(sd, argv[4], strlen(argv[4])) < 0)
     {
         perror("write");
         exit(EXIT_FAILURE);
     }
-    /* 
-    * Ricezione risultato 
-    * Inizializzo buffer di ricezione 
+    memset(ack, 0, sizeof(ack));
+    /* Ricezione risultato 
     */
-    rxb_init(&rxb, MAX_REQUEST_SIZE);
-
-    memset(response, 0, sizeof(response));
-    response_len = sizeof(response) - 1;
-
-    //FUNZIONE che termina solo quando trova /n ma qui non
-    //lo trova CAZZO!!! perche non c'era
-    if (rxb_readline(&rxb, sd, response, &response_len) < 0)
+    if ((nread = read(sd, ack, sizeof(ack) - 1)) < 0)
     {
-        rxb_destroy(&rxb);
-        fprintf(stderr, "File non trovato, connessione chiusa\n");
+        perror("read\n"); //quindi chiudo la socket attiva esco
         exit(EXIT_FAILURE);
     }
 
@@ -97,19 +90,26 @@ int main(int argc, char **argv)
 
     fflush(stdout);*/
     //recupero Informazioni server
-    //anche qui non va bene xread perche 
-    //ho degli /n
-    memset(response, 0, sizeof(response));
-    if ((nread = read(sd, response, sizeof(response) - 1)) < 0)
+    for (;;)
     {
-        perror("read\n");
-        exit(EXIT_FAILURE);
+        memset(response, 0, sizeof(response));
+        response_len = sizeof(response) - 1; 
+
+        if (rxb_readline(&rxb, sd, response, &response_len) < 0)
+        {
+            rxb_destroy(&rxb);
+            fprintf(stderr, "Connessione chiusa dal server!\n");
+            exit(EXIT_FAILURE);
+        }
+
+        /* Stampo riga letta da Server */
+        puts(response);
+
+        /* Passo a nuova richiesta una volta terminato input Server */
+        if (strcmp(response, "--- END REQUEST ---") == 0)
+        {
+            break;
+        }
     }
-    /* Stampo riga letta da Server */
-    puts(response);
-
-    /* chiudo socket */
-    close(sd);
-
     return 0;
 }
