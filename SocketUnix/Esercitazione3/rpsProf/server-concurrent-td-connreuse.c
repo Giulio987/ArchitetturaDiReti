@@ -23,7 +23,11 @@ void handler(int signo)
 
 	(void)signo;
 
-	/* gestisco tutti i figli terminati */
+	/*gestisco tutti i figli terminati 
+	* waitpid è non bloccante grazie a WHOANG
+	* e non è detto che a N figli corrispondano N SIGCHILD
+	* potrei averne meno ma io non voglio figli zombie
+	*/
 	while (waitpid(-1, &status, WNOHANG) > 0)
 		continue;
 }

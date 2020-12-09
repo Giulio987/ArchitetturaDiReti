@@ -90,6 +90,7 @@ int main(int argc, char **argv)
 
     fflush(stdout);*/
     //recupero Informazioni server
+    //ciclo di rxb per recuperare tutte le linee
     for (;;)
     {
         memset(response, 0, sizeof(response));
@@ -111,5 +112,9 @@ int main(int argc, char **argv)
             break;
         }
     }
+    //se avessi voluto usare read e basta non serviva 
+    //il memset e il -1 dopo sizeof perchè non
+    //mi interessano stringe null terminated, io qua
+    //ho interesse nei byte
     return 0;
 }

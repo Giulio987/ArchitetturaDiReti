@@ -103,7 +103,9 @@ int main(int argc, char **argv)
             exit(EXIT_FAILURE);
         }
 
-        /* Generazione di un figlio */
+        /* Generazione di un figlio
+        Generare sempre prima il figlio prima di 
+        fare altre robe */
         if ((pid = fork()) < 0)
         {
             perror("fork");
