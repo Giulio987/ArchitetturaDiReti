@@ -19,6 +19,7 @@ int main(int argc, char **argv)
   * write(sd, buff, strlen(buff) + 1) se sono sicuro 
   * di avere il terminatore e quindi invio anche quello
   * quindi alla ricezione non dovrò mettere sizeof(buff) -1
+  * (prova osx)
   */
     return 0;
 }
