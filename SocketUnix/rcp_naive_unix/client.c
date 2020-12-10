@@ -16,7 +16,7 @@ int main(int argc, char **argv)
         uint8_t buff[2048];
         int sd, err, nread;
         struct addrinfo hints, *res, *ptr;
-	memset(
+	
 
 	/* controllo argomenti */
         if (argc != 4) {  //non è quella delle diapositive
