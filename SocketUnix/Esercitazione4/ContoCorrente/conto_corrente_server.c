@@ -109,7 +109,7 @@ int main(int argc, char **argv)
             perror("accept");
             exit(EXIT_FAILURE);
         }
-
+        for(tutto il ciclo cosi da avere il riuso)
         /* Creo un processo figlio per gestire la richiesta */
         if ((pid = fork()) < 0)
         {
