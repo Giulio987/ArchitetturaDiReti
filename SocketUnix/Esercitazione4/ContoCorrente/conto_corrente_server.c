@@ -33,6 +33,7 @@ void handler(int signo)
 int main(int argc, char **argv)
 {
     int sd, err, on;
+    char *end_request = "--END CONNECTION--\n";
     struct addrinfo hints, *res;
     struct sigaction sa;
     if (argc != 2)
@@ -103,13 +104,14 @@ int main(int argc, char **argv)
         int ns, pid;
 
         /* Mi metto in attesa di richieste di connessione */
+        puts("Server in ascolto");
         ns = accept(sd, NULL, NULL);
         if (ns < 0)
         {
             perror("accept");
             exit(EXIT_FAILURE);
         }
-        for(tutto il ciclo cosi da avere il riuso)
+        
         /* Creo un processo figlio per gestire la richiesta */
         if ((pid = fork()) < 0)
         {
@@ -117,11 +119,22 @@ int main(int argc, char **argv)
             exit(EXIT_FAILURE);
         }
         else if (pid == 0)
-        { /* FIGLIO */
+        { /* FIGLIO  per ogni richiesta*/
             rxb_t rxb;
             char request[MAX_REQUEST_SIZE];
             int pid2, status, p1p0[2];
             size_t request_len;
+
+            /* Disabilito gestore SIGCHLD */
+			memset(&sa, 0, sizeof(sa));
+			sigemptyset(&sa.sa_mask);
+			sa.sa_handler = SIG_DFL;
+
+			if (sigaction(SIGCHLD, &sa, NULL) == -1)
+			{
+				perror("sigaction");
+				exit(EXIT_FAILURE);
+			}
 
             /* Chiudo la socket passiva */
             close(sd);
@@ -129,69 +142,91 @@ int main(int argc, char **argv)
             /* Inizializzo buffer di ricezione */
             rxb_init(&rxb, MAX_REQUEST_SIZE);
 
-            /* Avvio ciclo gestione richieste */
-            /*RICEVO LA CATEGORIA*/
-            memset(request, 0, sizeof(request));
-            request_len = sizeof(request) - 1;
+            /* Avvio ciclo gestione categorie */
+            for (;;)
+            {
+                /*RICEVO LA CATEGORIA*/
+                memset(request, 0, sizeof(request));
+                request_len = sizeof(request) - 1;
 
-            /* Leggo richiesta da Client */
-            if (rxb_readline(&rxb, ns, request, &request_len) < 0)
-            {
-                rxb_destroy(&rxb);
-                break;
-            }
-            if (pipe(p1p0) < 0)
-            {
-                perror("pipe");
-                exit(5);
-            }
-            if ((pid2 = fork()) < 0)
-            {
-                perror("fork");
-                exit(EXIT_FAILURE);
-            }
-            else if (pid2 == 0) //nipote 1
-            {
-                close(p1p0[0]);
-                close(1);
-                if (dup(p1p0[1]) < 0)
+                /* Leggo richiesta da Client */
+                if (rxb_readline(&rxb, ns, request, &request_len) < 0)
                 {
-                    perror("dup");
+                    rxb_destroy(&rxb);
+                    break;
+                }
+                if (pipe(p1p0) < 0)
+                {
+                    perror("pipe");
+                    exit(5);
+                }
+                if ((pid2 = fork()) < 0)
+                {
+                    perror("fork");
                     exit(EXIT_FAILURE);
                 }
+                else if (pid2 == 0) //nipote 1
+                {
+                    close(ns);
+                    close(p1p0[0]);
+                    close(1);
+                    if (dup(p1p0[1]) < 0)
+                    {
+                        perror("dup");
+                        exit(EXIT_FAILURE);
+                    }
+                    close(p1p0[1]);
+
+                    execlp("grep", "grep", request, "/var/local/conto_corrente.txt", (char *)NULL);
+                    perror("execlp");
+                    exit(6);
+                }
+                //figlio
+                wait(&status);
                 close(p1p0[1]);
+                if ((pid2 = fork()) < 0)
+                {
+                    perror("fork");
+                    exit(EXIT_FAILURE);
+                }
+                else if (pid2 == 0) //nipote 2
+                {   
+                    close(0);
+                    if (dup(p1p0[0]) < 0)
+                    {
+                        perror("dup");
+                        exit(EXIT_FAILURE);
+                    }
+                    /* Chiudo la socket attiva */
+                    close(p1p0[0]);
 
-                execlp("grep", "grep", request, "/var/local/conto_corrente.txt", (char *)NULL);
-                perror("execlp");
-                exit(6);
+                    close(1);
+                    if (dup(ns) < 0)
+                    {
+                        perror("dup");
+                        exit(EXIT_FAILURE);
+                    }
+                    /* Chiudo la socket attiva */
+                    close(ns);
+                    execlp("sort", "sort", "-n", "-r", (char *)NULL);
+                    perror("execFiglio");
+                    exit(8);
+                }
+                //FIGLIO
+                //close(ns);
+                wait(&status);
+                close(p1p0[0]);
+                if (write_all(ns, end_request, strlen(end_request)) < 0)
+				{
+					perror("write");
+					exit(EXIT_FAILURE);
+				}
             }
-            wait(&status);
-            close(p1p0[1]);
-            close(0);
-            if (dup(p1p0[0]) < 0)
-            {
-                perror("dup");
-                exit(EXIT_FAILURE);
-            }
-            /* Chiudo la socket attiva */
-            close(p1p0[0]);
-
-            close(1);
-            if (dup(ns) < 0)
-            {
-                perror("dup");
-                exit(EXIT_FAILURE);
-            }
-            /* Chiudo la socket attiva */
             close(ns);
-            execlp("sort", "sort", "-n", "-r", (char *)NULL);
-            perror("execFiglio");
-            exit(8);
+            exit(EXIT_SUCCESS);
         }
-
-        /* PADRE */
-
-        /* Chiudo la socket attiva */
+        /* padreChiudo la socket attiva */
+        //NON DEVO GESTIRE CHIUSURA DEI FIGLI PERCHE HO HANDLER
         close(ns);
     }
 

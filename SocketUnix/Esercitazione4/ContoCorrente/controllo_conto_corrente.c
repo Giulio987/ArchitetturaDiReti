@@ -76,7 +76,7 @@ int main(int argc, char **argv)
         perror("fgets");
         exit(EXIT_FAILURE);
     }
-    while (strcmp(request, "fine") != 0)
+    while (strcmp(request, "fine\n") != 0)
     {
         /* Invio richiesta al Server compreso il /n*/
         if (write_all(sd, request, strlen(request)) < 0)
@@ -93,10 +93,13 @@ int main(int argc, char **argv)
             if (rxb_readline(&rxb, sd, response, &response_len) < 0)
             {
                 rxb_destroy(&rxb);
-                //fprintf(stderr, "Connessione chiusa dal server!\n");
+                fprintf(stderr, "Connessione chiusa dal server!\n");
                 break;
             }
             puts(response);
+            if (strcmp(response, "--END CONNECTION--") == 0){
+                break;
+            }
         }
         /* Leggo stringa di richiesta */
         puts("Inserisci stringa di richiesta:");
@@ -107,6 +110,7 @@ int main(int argc, char **argv)
             exit(EXIT_FAILURE);
         }
     }
+    
     close(sd);
     return 0;
 }
