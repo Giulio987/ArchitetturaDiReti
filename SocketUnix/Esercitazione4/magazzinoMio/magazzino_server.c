@@ -33,7 +33,7 @@ void handler(int signo)
 int main(int argc, char **argv)
 {
     int sd, err, on;
-    char *end_request = "--END CONNECTION--\n";
+    char *end_request = "--END CONNECTION--\n", *ack = "ack\n";
     struct addrinfo hints, *res;
     struct sigaction sa;
     if (argc != 2)
@@ -121,9 +121,9 @@ int main(int argc, char **argv)
         else if (pid == 0)
         { /* FIGLIO  per ogni richiesta*/
             rxb_t rxb;
-            char request[MAX_REQUEST_SIZE];
+            char request[MAX_REQUEST_SIZE], request2[MAX_REQUEST_SIZE];
             int pid2, status, p1p0[2];
-            size_t request_len;
+            size_t request_len, request_len2;
 
             /* Disabilito gestore SIGCHLD */
 			memset(&sa, 0, sizeof(sa));
@@ -145,12 +145,25 @@ int main(int argc, char **argv)
             /* Avvio ciclo gestione categorie */
             for (;;)
             {
-                /*RICEVO LA CATEGORIA*/
+                /*RICEVO il nome del vino*/
                 memset(request, 0, sizeof(request));
                 request_len = sizeof(request) - 1;
 
                 /* Leggo richiesta da Client */
                 if (rxb_readline(&rxb, ns, request, &request_len) < 0)
+                {
+                    rxb_destroy(&rxb);
+                    break;
+                }
+                //mandol'ack
+                if(write_all(ns,ack,strlen(ack))< 0){
+                    perror("write");
+					exit(EXIT_FAILURE);
+                }
+                //ricevo l'annata del vino
+                memset(request2, 0, sizeof(request2));
+                request_len2 = sizeof(request2) - 1;
+                if (rxb_readline(&rxb, ns, request2, &request_len2) < 0)
                 {
                     rxb_destroy(&rxb);
                     break;
@@ -177,12 +190,12 @@ int main(int argc, char **argv)
                     }
                     close(p1p0[1]);
 
-                    execlp("grep", "grep", request, "/var/local/conto_corrente.txt", (char *)NULL);
+                    execlp("grep", "grep", request, "/var/local/magazzino.txt", (char *)NULL);
                     perror("execlp");
                     exit(6);
                 }
                 //figlio
-                //wait(&status);
+               
                 close(p1p0[1]);
                 if ((pid2 = fork()) < 0)
                 {
@@ -208,13 +221,12 @@ int main(int argc, char **argv)
                     }
                     /* Chiudo la socket attiva */
                     close(ns);
-                    execlp("sort", "sort", "-n", "-r", (char *)NULL);
+                    execlp("grep", "grep", request2, (char *)NULL);
                     perror("execFiglio");
                     exit(8);
                 }
                 //FIGLIO
-                //Aspetto i due nipoti
-                //fare le due wait alla fine
+                //Aspetto nipoti terinare
                 wait(&status);
                 wait(&status);
                 close(p1p0[0]);

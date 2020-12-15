@@ -14,13 +14,11 @@
 
 int main(int argc, char **argv)
 {
-    int sd, err;
+    int sd, err, nread;
     struct addrinfo hints, *ptr, *res;
     rxb_t rxb;
-    char request[MAX_REQUEST_SIZE];
-    char response[MAX_REQUEST_SIZE];
-    size_t response_len;
-
+    char *ackVer = "ack\n";
+    char nomeVino[MAX_REQUEST_SIZE], annata[MAX_REQUEST_SIZE], ack[10];
     /* Controllo argomenti */
     if (argc != 3)
     {
@@ -67,50 +65,90 @@ int main(int argc, char **argv)
 
     /* A questo punto, posso liberare la memoria allocata da getaddrinfo */
     freeaddrinfo(res);
-    /* Inizializzo buffer di ricezione */
+
     rxb_init(&rxb, MAX_REQUEST_SIZE);
 
-    puts("Inserisci la categoria richiesta: ");
-    if (fgets(request, sizeof(request), stdin) == NULL)
+    puts("Inserisci il nome del vino richiesta: ");
+    if (fgets(nomeVino, sizeof(nomeVino), stdin) == NULL)
     {
         perror("fgets");
         exit(EXIT_FAILURE);
     }
-    while (strcmp(request, "fine\n") != 0)
+    puts("Inserisci l'annata: ");
+    if (fgets(annata, sizeof(annata), stdin) == NULL)
+    {
+        perror("fgets");
+        exit(EXIT_FAILURE);
+    }
+    while (strcmp(nomeVino, "fine\n") != 0)
     {
         /* Invio richiesta al Server compreso il /n*/
-        if (write_all(sd, request, strlen(request)) < 0)
+        if (write_all(sd, nomeVino, strlen(nomeVino)) < 0)
         {
             perror("write");
             exit(EXIT_FAILURE);
         }
-        //cosi assumo che quando il server chiude allora termino il ciclo
-        for(;;)//while (strcmp(response, "--END CONNECTION--") != 0)
+        /* Inizializzo il buffer a zero e leggo sizeof(ack)-1
+         * byte, così sono sicuro che il contenuto del buffer
+         * sarà sempre null-terminated. In questo modo, posso
+         * interpretarlo come una stringa C e passarlo
+         * successivamente alla funzione strcmp. */
+        memset(ack, 0, sizeof(ack));
+        //per l'ack è meglio una semplice read
+        if ((nread = read(sd, ack, sizeof(ack) - 1)) < 0)
         {
-            //FORSE ERA MEGLIO UNA SEMPLICE READ-> anche no in realtà
+            perror("lettura ack");
+            exit(EXIT_FAILURE);
+        }
+        //SEMPRE CONTROLLARE CHE L'ack SIA CORRETTO
+        if (strcmp(ackVer, ack) != 0)
+        {
+            perror("strcmp ack");
+            exit(EXIT_FAILURE);
+        }
+        if (write_all(sd, annata, strlen(annata)) < 0)
+        {
+            perror("write");
+            exit(EXIT_FAILURE);
+        }
+        
+        for (;;)
+        {
+            char response[MAX_REQUEST_SIZE];
+            size_t response_len;
+
             memset(response, 0, sizeof(response));
             response_len = sizeof(response) - 1;
+
             if (rxb_readline(&rxb, sd, response, &response_len) < 0)
             {
                 rxb_destroy(&rxb);
                 fprintf(stderr, "Connessione chiusa dal server!\n");
-                break;
+                exit(EXIT_FAILURE);
             }
+
+            /* Stampo riga letta da Server */
             puts(response);
-            if (strcmp(response, "--END CONNECTION--") == 0){
+
+            /* Passo a nuova richiesta una volta terminato input Server */
+            if (strcmp(response, "--END CONNECTION--") == 0)
+            {
                 break;
             }
         }
-        /* Leggo stringa di richiesta */
-        puts("Inserisci stringa di richiesta:");
-        //fgets prende anche /n
-        if (fgets(request, sizeof(request), stdin) == NULL)
+        puts("Inserisci il nome del vino richiesta: ");
+        if (fgets(nomeVino, sizeof(nomeVino), stdin) == NULL)
+        {
+            perror("fgets");
+            exit(EXIT_FAILURE);
+        }
+        puts("Inserisci l'annata: ");
+        if (fgets(annata, sizeof(annata), stdin) == NULL)
         {
             perror("fgets");
             exit(EXIT_FAILURE);
         }
     }
-    
     close(sd);
     return 0;
 }

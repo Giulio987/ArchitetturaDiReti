@@ -120,11 +120,8 @@ int main(int argc, char **argv)
         }
         else if (pid == 0)
         { /* FIGLIO  per ogni richiesta*/
-            rxb_t rxb;
             char request[MAX_REQUEST_SIZE];
             int pid2, status, p1p0[2];
-            size_t request_len;
-
             /* Disabilito gestore SIGCHLD */
 			memset(&sa, 0, sizeof(sa));
 			sigemptyset(&sa.sa_mask);
@@ -139,21 +136,15 @@ int main(int argc, char **argv)
             /* Chiudo la socket passiva */
             close(sd);
 
-            /* Inizializzo buffer di ricezione */
-            rxb_init(&rxb, MAX_REQUEST_SIZE);
-
             /* Avvio ciclo gestione categorie */
             for (;;)
             {
                 /*RICEVO LA CATEGORIA*/
                 memset(request, 0, sizeof(request));
-                request_len = sizeof(request) - 1;
-
-                /* Leggo richiesta da Client */
-                if (rxb_readline(&rxb, ns, request, &request_len) < 0)
+                if (read(ns, request,sizeof(request)-1) < 0)
                 {
-                    rxb_destroy(&rxb);
-                    break;
+                    perror("read\n");
+                    exit(EXIT_FAILURE);
                 }
                 if (pipe(p1p0) < 0)
                 {
@@ -182,7 +173,7 @@ int main(int argc, char **argv)
                     exit(6);
                 }
                 //figlio
-                //wait(&status);
+                wait(&status);
                 close(p1p0[1]);
                 if ((pid2 = fork()) < 0)
                 {
@@ -213,9 +204,7 @@ int main(int argc, char **argv)
                     exit(8);
                 }
                 //FIGLIO
-                //Aspetto i due nipoti
-                //fare le due wait alla fine
-                wait(&status);
+                //close(ns);
                 wait(&status);
                 close(p1p0[0]);
                 if (write_all(ns, end_request, strlen(end_request)) < 0)
@@ -223,7 +212,9 @@ int main(int argc, char **argv)
 					perror("write");
 					exit(EXIT_FAILURE);
 				}
+                //figlio
             }
+            //figlio
             close(ns);
             exit(EXIT_SUCCESS);
         }
