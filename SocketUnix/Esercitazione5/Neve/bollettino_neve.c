@@ -76,11 +76,18 @@ int main(int argc, char **argv)
             perror("fgets");
             exit(EXIT_FAILURE);
         }
+        if(strcmp(regione, "fine\n") == 0){
+            break;
+        }
         puts("Inserisci Il numero di loaclità: ");
         if (fgets(nLocal, sizeof(nLocal), stdin) == NULL)
         {
             perror("fgets");
             exit(EXIT_FAILURE);
+        }
+
+        if(strcmp(nLocal, "fine\n") == 0){
+            break;
         }
         /* Invio richiesta al Server compreso il /n*/
         if (write_all(sd, regione, strlen(regione)) < 0)
@@ -107,6 +114,9 @@ int main(int argc, char **argv)
             perror("write");
             exit(EXIT_FAILURE);
         }
+        /* È consigliabile effettuare il flushing del buffer di printf
+        *  prima di iniziare a scrivere sullo standard output con write */
+        fflush(stdout);
 
         for (;;)
         {

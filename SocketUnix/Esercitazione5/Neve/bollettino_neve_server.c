@@ -122,7 +122,7 @@ int main(int argc, char **argv)
         }
         else if (pid == 0)
         { /* FIGLIO  per ogni richiesta*/
-            rxb_t rxb;
+            rxb_t rxb1, rxb2;
             char request[MAX_REQUEST_SIZE], request2[MAX_REQUEST_SIZE];
             int pid2, status, p1p0[2];
             size_t request_len, request_len2;
@@ -144,7 +144,8 @@ int main(int argc, char **argv)
             close(sd);
 
             /* Inizializzo buffer di ricezione */
-            rxb_init(&rxb, MAX_REQUEST_SIZE);
+            rxb_init(&rxb1, MAX_REQUEST_SIZE);
+            rxb_init(&rxb2, MAX_REQUEST_SIZE);
 
             /* Avvio ciclo gestione categorie */
             for (;;)
@@ -154,9 +155,9 @@ int main(int argc, char **argv)
                 request_len = sizeof(request) - 1;
 
                 /* Leggo richiesta da Client */
-                if (rxb_readline(&rxb, ns, request, &request_len) < 0)
+                if (rxb_readline(&rxb1, ns, request, &request_len) < 0)
                 {
-                    rxb_destroy(&rxb);
+                    rxb_destroy(&rxb1);
                     break;
                 }
                 //creo la stringa
@@ -171,9 +172,9 @@ int main(int argc, char **argv)
                 //ricevo il numero di località
                 memset(request2, 0, sizeof(request2));
                 request_len2 = sizeof(request2) - 1;
-                if (rxb_readline(&rxb, ns, request2, &request_len2) < 0)
+                if (rxb_readline(&rxb2, ns, request2, &request_len2) < 0)
                 {
-                    rxb_destroy(&rxb);
+                    rxb_destroy(&rxb2);
                     break;
                 }
                 
