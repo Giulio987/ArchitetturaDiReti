@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/wait.h>
@@ -44,7 +46,10 @@ int main(int argc, char** argv) {
         for (;;) {
                 /* Lettura dati dall'utente */
                 printf("Inserisci il nome di un vino cui sei interessato ('fine' per uscire):\n");
-                scanf("%s", nome); //ho il terminatore
+                if (scanf("%s", nome) == EOF || errno != 0) {
+                        perror("scanf");
+                        exit(EXIT_FAILURE);
+                }
 
                 if (strcmp(nome, "fine") == 0) {
                         printf("Hai scelto di terminare il programma.\n");
@@ -53,7 +58,10 @@ int main(int argc, char** argv) {
 
                 /* Lettura dati dall'utente */
                 printf("Inserisci l'annata di un vino cui sei interessato ('fine' per uscire):\n");
-                scanf("%s", annata); //ho il terminatore
+                if (scanf("%s", annata) == EOF || errno != 0) {
+                        perror("scanf");
+                        exit(EXIT_FAILURE);
+                }
 
                 if (strcmp(annata, "fine") == 0) {
                         printf("Hai scelto di terminare il programma.\n");

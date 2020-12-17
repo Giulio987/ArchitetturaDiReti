@@ -1,7 +1,7 @@
 JAVA_SOURCES := $(wildcard *.java)
 JAVA_TARGETS := $(patsubst %.java,%.class,$(JAVA_SOURCES))
 C_SOURCES    := $(wildcard *.[ch])
-C_TARGETS    := client-naive server-concurrent-naive
+C_TARGETS    := client-naive server-concurrent-naive client-simple-csexp server-concurrent-simple-csexp
 TODAY        := $(shell date +%Y%m%d)
 ARCHIVE      := controllo_conto_corrente_$(TODAY).zip
 
@@ -18,6 +18,11 @@ endif
 all: $(C_TARGETS) $(JAVA_TARGETS)
 
 # dependencies
+client-simple-csexp: client-simple-csexp.o simple_csexp.o rxb.o utils.o
+server-concurrent-simple-csexp: server-concurrent-simple-csexp.o simple_csexp.o rxb.o utils.o
+
+client-simple-csexp.o: client-simple-csexp.c simple_csexp.h rxb.h utils.h
+server-concurrent-simple-csexp.o: server-concurrent-simple-csexp.c simple_csexp.h rxb.h utils.h
 
 # client-naive: client-naive.o
 # server-concurrent-naive: server-concurrent-naive.o

@@ -1,7 +1,7 @@
 JAVA_SOURCES := $(wildcard *.java)
 JAVA_TARGETS := $(patsubst %.java,%.class,$(JAVA_SOURCES))
 C_SOURCES    := $(wildcard *.[ch])
-C_TARGETS    := bollettino_neve bollettino_neve_server
+C_TARGETS    := bollettino_neve bollettino_neve_server bollettino_neve_serverprova
 TODAY        := $(shell date +%Y%m%d)
 ARCHIVE      := neve_$(TODAY).zip
 
@@ -21,9 +21,11 @@ all: $(C_TARGETS) $(JAVA_TARGETS)
 bollettino_neve.o: bollettino_neve.c utils.h rxb.h
 rxb.o: rxb.c rxb.h
 bollettino_neve_server.o: bollettino_neve_server.c utils.h rxb.h
+bollettino_neve_serverprova.o: bollettino_neve_serverprova.c utils.h rxb.h
 
 bollettino_neve: bollettino_neve.o utils.o rxb.o
 bollettino_neve_server: bollettino_neve_server.o utils.o rxb.o
+bollettino_neve_serverprova: bollettino_neve_serverprova.o utils.o rxb.o
 
 %.class: %.java
 	javac $<

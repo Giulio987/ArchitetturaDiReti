@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/wait.h>
@@ -43,10 +45,12 @@ int main(int argc, char** argv) {
         for(;;) {
                 /* Lettura dati dall'utente */
                 printf("Inserisci la categoria di spese cui sei interessato ('fine' per uscire):\n");
-                scanf("%s", categoria); //ho il terminatore
+                if (scanf("%s", categoria) == EOF || errno != 0) {
+                        perror("scanf");
+                        exit(EXIT_FAILURE);
+                }
 
                 if (strcmp(categoria, "fine") == 0) {
-                        close(sd);
                         printf("Hai scelto di terminare il programma.\n");
                         break;
                 }

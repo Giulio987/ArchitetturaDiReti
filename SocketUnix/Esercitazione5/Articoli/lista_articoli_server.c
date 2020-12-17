@@ -30,11 +30,15 @@ void handler(int signo)
     while (waitpid(-1, &status, WNOHANG) > 0)
         continue;
 }
+int autorizza(const char *email_revisore, const char *password)
+{
+    return 1;
+}
 
 int main(int argc, char **argv)
 {
     int sd, err, on;
-    char *end_request = "--END CONNECTION--\n", *ack = "ack\n";
+    char *end_request = "--END CONNECTION--\n", *ack = "ack\n", *not_autorized = "CREDENZIALI NON CORRETTE\n";
     struct addrinfo hints, *res;
     struct sigaction sa;
 
@@ -101,6 +105,7 @@ int main(int argc, char **argv)
 
     for (;;)
     {
+        /*  grep cibo /var/local/conto_corrente.txt |sort -n -r*/
 
         int ns, pid;
 
@@ -121,11 +126,10 @@ int main(int argc, char **argv)
         }
         else if (pid == 0)
         { /* FIGLIO  per ogni richiesta*/
-            rxb_t rxb1, rxb2;
-            char request[MAX_REQUEST_SIZE], request2[MAX_REQUEST_SIZE], response[MAX_REQUEST_SIZE], media[4096];
-            int pid2, status, p1p2[2], p2p0[2], nread, sum = 0, i = 0;
-            size_t request_len, request_len2;
-            char regione[MAX_REQUEST_SIZE + 15];
+            rxb_t rxb1, rxb2, rxb3;
+            char mail[MAX_REQUEST_SIZE], password[MAX_REQUEST_SIZE], rivista[MAX_REQUEST_SIZE], response[MAX_REQUEST_SIZE];
+            int pid2, status, p1p2[2], p2p3[2], p3p4[2], nread;
+            size_t request_len, request_len2, request_len3;
 
             /* Disabilito gestore SIGCHLD */
             memset(&sa, 0, sizeof(sa));
@@ -144,43 +148,66 @@ int main(int argc, char **argv)
             /* Inizializzo buffer di ricezione */
             rxb_init(&rxb1, MAX_REQUEST_SIZE);
             rxb_init(&rxb2, MAX_REQUEST_SIZE);
-
+            rxb_init(&rxb3, MAX_REQUEST_SIZE);
             /* Avvio ciclo gestione categorie */
             for (;;)
             {
                 /*RICEVO il nome del vino*/
-                memset(request, 0, sizeof(request));
-                request_len = sizeof(request) - 1;
+                memset(mail, 0, sizeof(mail));
+                request_len = sizeof(mail) - 1;
 
                 /* Leggo richiesta da Client */
-                if (rxb_readline(&rxb1, ns, request, &request_len) < 0)
+                if (rxb_readline(&rxb1, ns, mail, &request_len) < 0)
                 {
                     rxb_destroy(&rxb1);
                     break;
                 }
-                //creo la stringa
-                snprintf(regione, sizeof(regione), "/var/local/%s.txt", request);
-
                 //mandol'ack
                 if (write_all(ns, ack, strlen(ack)) < 0)
                 {
                     perror("write");
                     exit(EXIT_FAILURE);
                 }
-                //ricevo il numero di località
-                memset(request2, 0, sizeof(request2));
-                request_len2 = sizeof(request2) - 1;
-                if (rxb_readline(&rxb2, ns, request2, &request_len2) < 0)
+                //ricevo la password
+                memset(password, 0, sizeof(password));
+                request_len2 = sizeof(password) - 1;
+                if (rxb_readline(&rxb2, ns, password, &request_len2) < 0)
                 {
                     rxb_destroy(&rxb2);
                     break;
                 }
-
+                if (autorizza(mail, password) != 1)
+                {
+                    if (write_all(ns, not_autorized, strlen(not_autorized)) < 0)
+                    {
+                        perror("write");
+                        exit(EXIT_FAILURE);
+                    }
+                    close(ns);
+                    exit(EXIT_SUCCESS);
+                }
+                else
+                {
+                    //mandol'ack
+                    if (write_all(ns, ack, strlen(ack)) < 0)
+                    {
+                        perror("write");
+                        exit(EXIT_FAILURE);
+                    }
+                }
+                memset(rivista, 0, sizeof(rivista));
+                request_len3 = sizeof(rivista) - 1;
+                if (rxb_readline(&rxb3, ns, rivista, &request_len3) < 0)
+                {
+                    rxb_destroy(&rxb2);
+                    break;
+                }
                 if (pipe(p1p2) < 0)
                 {
                     perror("pipe");
                     exit(5);
                 }
+
                 if ((pid2 = fork()) < 0)
                 {
                     perror("fork");
@@ -197,15 +224,15 @@ int main(int argc, char **argv)
                         exit(EXIT_FAILURE);
                     }
                     close(p1p2[1]);
-
-                    execlp("sort", "sort", "-n", "-r", regione, (char *)NULL);
+                    //trovo gli articoli con quella mail
+                    execlp("grep", "grep", mail, "/var/local/revisione.txt", (char *)NULL);
                     perror("execlp");
                     exit(6);
                 }
                 //figlio
-                if (pipe(p2p0) < 0)
+                if (pipe(p2p3) < 0)
                 {
-                    perror("pipe2");
+                    perror("pipe");
                     exit(5);
                 }
                 close(p1p2[1]);
@@ -216,6 +243,7 @@ int main(int argc, char **argv)
                 }
                 else if (pid2 == 0) //nipote 2
                 {
+                    close(p2p3[0]);
                     close(0);
                     if (dup(p1p2[0]) < 0)
                     {
@@ -226,104 +254,106 @@ int main(int argc, char **argv)
                     close(p1p2[0]);
 
                     close(1);
-                    if (dup(p2p0[1]) < 0)
+                    if (dup(p2p3[1]) < 0)
                     {
                         perror("dup");
                         exit(EXIT_FAILURE);
                     }
                     /* Chiudo la socket attiva */
-                    close(p2p0[1]);
-                    execlp("head", "head", "-n", request2, (char *)NULL);
+                    close(ns);
+                    close(p2p3[1]);
+                    execlp("grep", "grep", rivista, (char *)NULL);
                     perror("execFiglio");
                     exit(8);
                 }
                 //FIGLIO
-                //Aspetto nipoti terinare
-                wait(&status);
-                wait(&status);
-
                 close(p1p2[0]);
-                close(p2p0[1]);
-                memset(response, 0, sizeof(response));
-                if ((nread = read(p2p0[0], response, sizeof(response))) < 0)
+                close(p2p3[1]);
+                if (pipe(p3p4) < 0)
                 {
-                    perror("read/n");
+                    perror("pipe");
+                    exit(5);
+                }
+                if ((pid2 = fork()) < 0)
+                {
+                    perror("fork");
+                    exit(EXIT_FAILURE);
+                }
+                else if (pid2 == 0) //nipote 3
+                {
+                    close(p3p4[0]);
+                    close(ns);
+                    close(0);
+                    if (dup(p2p3[0]) < 0)
+                    {
+                        perror("dup");
+                        exit(EXIT_FAILURE);
+                    }
+                    close(p2p3[0]);
+
+                    close(1);
+                    if (dup(p3p4[1]) < 0)
+                    {
+                        perror("dup");
+                        exit(EXIT_FAILURE);
+                    }
+                    close(p3p4[1]);
+
+                    execlp("sort", "sort", "-r", (char *)NULL);
+                    perror("execlp");
                     exit(6);
                 }
-
+                close(p2p3[0]);
+                memset(response, 0, sizeof(response));
+                if ((nread = read(p3p4[0], response, sizeof(response) - 1)) < 0)
+                {
+                    perror("read");
+                    exit(EXIT_FAILURE);
+                }
                 if (write_all(ns, response, strlen(response)) < 0)
                 {
                     perror("write");
                     exit(EXIT_FAILURE);
                 }
-                char *token = strtok(response, ",");
-                char *token2 = token;
-                
-                while (token != NULL)
-                {
-                    long ret;
-                    char *endptr;
-                    ret = strtol(token2, &endptr, 10);
-
-                    if (ret == 0 && errno == EINVAL)
-                    {
-                        continue;
-                    }
-
-                    if (errno == ERANGE)
-                    {
-                        if (ret == LONG_MIN)
-                        {
-                            // underflow
-                            break;
-                        }
-                        else
-                        { // ret == LONG_MAX
-                            // overflow
-                            break;
-                        }
-                    }
-                    sum += ret;
-                    for (i = 0; i < 3; i++)
-                    {
-                        fprintf(stderr,"%s", token);
-                        token = strtok(NULL, ",");
-                    }
-                    token2 = strtok(token, ".\n");
-                    token2 = strtok(NULL, ".");
-                    //fprintf(stderr,"%s", token2);
-                }
-                long ret;
-                char *endptr;
-                ret = strtol(request2, &endptr, 10);
-
-                if (ret == 0 && errno == EINVAL)
-                {
-                    fprintf(stderr, "Numero ricevuto non valido\n");
-                    break;
-                }
-
-                if (errno == ERANGE)
-                {
-                    if (ret == LONG_MIN)
-                    {
-                        fprintf(stderr, "Underflow\n");
-                        break;
-                    }
-                    else
-                    { // ret == LONG_MAX
-                        // overflow
-                        fprintf(stderr, "Overflow\n");
-                        break;
-                    }
-                }
-                sum = sum / ret;
-                snprintf(media, sizeof(media), "Media di neve per le localita inserite: %d\n", sum);
-                if (write_all(ns, media, strlen(media)) < 0)
+                if (write_all(p3p4[1], response, strlen(response)) < 0)
                 {
                     perror("write");
                     exit(EXIT_FAILURE);
                 }
+                close(p3p4[1]);
+                if ((pid2 = fork()) < 0)
+                {
+                    perror("fork");
+                    exit(EXIT_FAILURE);
+                }
+                else if (pid2 == 0) //nipote 4
+                {
+                    close(0);
+                    if (dup(p3p4[0]) < 0)
+                    {
+                        perror("dup");
+                        exit(EXIT_FAILURE);
+                    }
+                    close(p3p4[0]);
+
+                    close(1);
+                    if (dup(ns) < 0)
+                    {
+                        perror("dup socket");
+                        exit(EXIT_FAILURE);
+                    }
+                    close(ns);
+
+                    execlp("wc", "wc", "-l", (char *)NULL);
+                    perror("execlp");
+                    exit(6);
+                }
+                //Aspetto nipoti terinare
+                wait(&status);
+                wait(&status);
+                wait(&status);
+                wait(&status);
+                close(p3p4[0]);
                 if (write_all(ns, end_request, strlen(end_request)) < 0)
                 {
                     perror("write");
