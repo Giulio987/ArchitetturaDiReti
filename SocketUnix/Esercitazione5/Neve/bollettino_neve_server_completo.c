@@ -121,9 +121,9 @@ int main(int argc, char **argv)
         }
         else if (pid == 0)
         { /* FIGLIO  per ogni richiesta*/
-            rxb_t rxb1, rxb2;
-            char request[MAX_REQUEST_SIZE], request2[MAX_REQUEST_SIZE], response[MAX_REQUEST_SIZE], media[4096];
-            int pid2, status, p1p2[2], p2p0[2], nread, sum = 0, i = 0;
+            rxb_t rxb1, rxb2, rxb3;
+            char request[MAX_REQUEST_SIZE], request2[MAX_REQUEST_SIZE], media[4096];
+            int pid2, status, p1p2[2], p2p0[2];
             size_t request_len, request_len2;
             char regione[MAX_REQUEST_SIZE + 15];
 
@@ -144,11 +144,14 @@ int main(int argc, char **argv)
             /* Inizializzo buffer di ricezione */
             rxb_init(&rxb1, MAX_REQUEST_SIZE);
             rxb_init(&rxb2, MAX_REQUEST_SIZE);
-
+            
             /* Avvio ciclo gestione categorie */
             for (;;)
-            {
-                /*RICEVO il nome del vino*/
+            {   int  sum = 0;
+                //DEVO REINIZIALIZZARE IL BUFFER PRIMA DI
+                //UN NUOVO CICLO DI READ
+                rxb_init(&rxb3, MAX_REQUEST_SIZE);
+                /*RICEVO il nome della regione*/
                 memset(request, 0, sizeof(request));
                 request_len = sizeof(request) - 1;
 
@@ -158,6 +161,7 @@ int main(int argc, char **argv)
                     rxb_destroy(&rxb1);
                     break;
                 }
+                    
                 //creo la stringa
                 snprintf(regione, sizeof(regione), "/var/local/%s.txt", request);
 
@@ -175,7 +179,7 @@ int main(int argc, char **argv)
                     rxb_destroy(&rxb2);
                     break;
                 }
-
+                
                 if (pipe(p1p2) < 0)
                 {
                     perror("pipe");
@@ -202,13 +206,16 @@ int main(int argc, char **argv)
                     perror("execlp");
                     exit(6);
                 }
+                //aspetto nipote 1
+                wait(&status);
+                close(p1p2[1]);
                 //figlio
                 if (pipe(p2p0) < 0)
                 {
                     perror("pipe2");
                     exit(5);
                 }
-                close(p1p2[1]);
+                
                 if ((pid2 = fork()) < 0)
                 {
                     perror("fork");
@@ -216,13 +223,13 @@ int main(int argc, char **argv)
                 }
                 else if (pid2 == 0) //nipote 2
                 {
+                    close(ns);
                     close(0);
                     if (dup(p1p2[0]) < 0)
                     {
                         perror("dup");
                         exit(EXIT_FAILURE);
                     }
-                    /* Chiudo la socket attiva */
                     close(p1p2[0]);
 
                     close(1);
@@ -238,36 +245,39 @@ int main(int argc, char **argv)
                     exit(8);
                 }
                 //FIGLIO
-                //Aspetto nipoti terinare
+                //Aspetto nipoti terminare
                 wait(&status);
-                wait(&status);
-
+                //chiudo pipe aperte
                 close(p1p2[0]);
                 close(p2p0[1]);
-                memset(response, 0, sizeof(response));
-                if ((nread = read(p2p0[0], response, sizeof(response))) < 0)
+                //CLICLO PER LA GESTIONE STRINGHE
+                for (;;)
                 {
-                    perror("read/n");
-                    exit(6);
-                }
-
-                if (write_all(ns, response, strlen(response)) < 0)
-                {
-                    perror("write");
-                    exit(EXIT_FAILURE);
-                }
-                char *token = strtok(response, ",");
-                char *token2 = token;
-                
-                while (token != NULL)
-                {
+                    char response[MAX_REQUEST_SIZE], response2[MAX_REQUEST_SIZE +2];
+                    size_t response_len;
+                    memset(response, 0, sizeof(response));
+                    response_len = sizeof(response) - 1;  
+                    if (rxb_readline(&rxb3, p2p0[0], response, &response_len) < 0)
+                    {
+                        rxb_destroy(&rxb3);
+                        break;
+                    }
+                    snprintf(response2,sizeof(response2), "%s\n", response);
+                    //SCRIVO SULLA SCOKET IL RISULTATO
+                    if (write_all(ns, response2, strlen(response2)) < 0)
+                    {
+                        perror("write");
+                        exit(EXIT_FAILURE);
+                    }
+                    
+                    char *token = strtok(response, ",");
                     long ret;
                     char *endptr;
-                    ret = strtol(token2, &endptr, 10);
+                    ret = strtol(token, &endptr, 10);
 
                     if (ret == 0 && errno == EINVAL)
                     {
-                        continue;
+                        break;
                     }
 
                     if (errno == ERANGE)
@@ -283,16 +293,10 @@ int main(int argc, char **argv)
                             break;
                         }
                     }
+                    //fprintf(stdout, "ret= %lu\n",ret);
                     sum += ret;
-                    for (i = 0; i < 3; i++)
-                    {
-                        fprintf(stderr,"%s", token);
-                        token = strtok(NULL, ",");
-                    }
-                    token2 = strtok(token, ".\n");
-                    token2 = strtok(NULL, ".");
-                    //fprintf(stderr,"%s", token2);
                 }
+                //CONVERTO IN NUMERO ANCHE IL NUMERO DI LOCALITA RICHIESTE
                 long ret;
                 char *endptr;
                 ret = strtol(request2, &endptr, 10);
@@ -318,6 +322,8 @@ int main(int argc, char **argv)
                     }
                 }
                 sum = sum / ret;
+
+                close(p2p0[0]);
                 snprintf(media, sizeof(media), "Media di neve per le localita inserite: %d\n", sum);
                 if (write_all(ns, media, strlen(media)) < 0)
                 {

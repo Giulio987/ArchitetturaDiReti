@@ -126,11 +126,12 @@ int main(int argc, char **argv)
         }
         else if (pid == 0)
         { /* FIGLIO  per ogni richiesta*/
-            rxb_t rxb1, rxb2, rxb3;
-            char mail[MAX_REQUEST_SIZE], password[MAX_REQUEST_SIZE], rivista[MAX_REQUEST_SIZE], response[MAX_REQUEST_SIZE];
-            int pid2, status, p1p2[2], p2p3[2], p3p4[2], nread;
+            rxb_t rxb1, rxb2, rxb3, rxb4;
+            char mail[MAX_REQUEST_SIZE], password[MAX_REQUEST_SIZE], rivista[MAX_REQUEST_SIZE];
+            int pid2, status, p1p2[2], p2p3[2], p3p4[2], countRighe=0;
             size_t request_len, request_len2, request_len3;
-
+            char response[MAX_REQUEST_SIZE], end[4096];
+            size_t response_len;
             /* Disabilito gestore SIGCHLD */
             memset(&sa, 0, sizeof(sa));
             sigemptyset(&sa.sa_mask);
@@ -149,10 +150,12 @@ int main(int argc, char **argv)
             rxb_init(&rxb1, MAX_REQUEST_SIZE);
             rxb_init(&rxb2, MAX_REQUEST_SIZE);
             rxb_init(&rxb3, MAX_REQUEST_SIZE);
+            
             /* Avvio ciclo gestione categorie */
             for (;;)
             {
-                /*RICEVO il nome del vino*/
+                rxb_init(&rxb4, MAX_REQUEST_SIZE);
+                /*Ricevo mail*/
                 memset(mail, 0, sizeof(mail));
                 request_len = sizeof(mail) - 1;
 
@@ -195,6 +198,7 @@ int main(int argc, char **argv)
                         exit(EXIT_FAILURE);
                     }
                 }
+                //ricevo il nome della rivista
                 memset(rivista, 0, sizeof(rivista));
                 request_len3 = sizeof(rivista) - 1;
                 if (rxb_readline(&rxb3, ns, rivista, &request_len3) < 0)
@@ -299,61 +303,49 @@ int main(int argc, char **argv)
                     }
                     close(p3p4[1]);
 
-                    execlp("sort", "sort", "-r", (char *)NULL);
+                    execlp("sort", "sort", "-r", "-n", (char *)NULL);
                     perror("execlp");
                     exit(6);
                 }
                 close(p2p3[0]);
-                memset(response, 0, sizeof(response));
-                if ((nread = read(p3p4[0], response, sizeof(response) - 1)) < 0)
-                {
-                    perror("read");
-                    exit(EXIT_FAILURE);
-                }
-                if (write_all(ns, response, strlen(response)) < 0)
+
+                //Così facendo la read non è bloccante se non ci sono corrispondenze
+                //scrivo almeno un carattere-> da domandare al prof...
+                /*if (write_all(p3p4[1], "\n", 2) < 0)
                 {
                     perror("write");
                     exit(EXIT_FAILURE);
-                }
-                if (write_all(p3p4[1], response, strlen(response)) < 0)
-                {
-                    perror("write");
-                    exit(EXIT_FAILURE);
-                }
+                }*/
                 close(p3p4[1]);
-                if ((pid2 = fork()) < 0)
-                {
-                    perror("fork");
-                    exit(EXIT_FAILURE);
-                }
-                else if (pid2 == 0) //nipote 4
-                {
-                    close(0);
-                    if (dup(p3p4[0]) < 0)
+                for (;;)
+                {   char response2[MAX_REQUEST_SIZE +2];
+                    memset(response, 0, sizeof(response));
+                    response_len = sizeof(response) - 1;
+                    if (rxb_readline(&rxb4, p3p4[0], response, &response_len) < 0)
                     {
-                        perror("dup");
+                        rxb_destroy(&rxb4);
+                        break;
+                    }
+                    snprintf(response2,sizeof(response2), "%s\n", response);
+                    if (write_all(ns, response2, strlen(response2)) < 0)
+                    {
+                        perror("write");
                         exit(EXIT_FAILURE);
                     }
-                    close(p3p4[0]);
-
-                    close(1);
-                    if (dup(ns) < 0)
-                    {
-                        perror("dup socket");
-                        exit(EXIT_FAILURE);
-                    }
-                    close(ns);
-
-                    execlp("wc", "wc", "-l", (char *)NULL);
-                    perror("execlp");
-                    exit(6);
+                    countRighe++;
                 }
+                close(p3p4[0]);
+                
                 //Aspetto nipoti terinare
                 wait(&status);
                 wait(&status);
                 wait(&status);
-                wait(&status);
-                close(p3p4[0]);
+                snprintf(end, sizeof(end), "Numero di Articoli da revisionare: %d\n", countRighe);
+                if (write_all(ns, end, strlen(end)) < 0)
+                {
+                    perror("write");
+                    exit(EXIT_FAILURE);
+                }
                 if (write_all(ns, end_request, strlen(end_request)) < 0)
                 {
                     perror("write");
