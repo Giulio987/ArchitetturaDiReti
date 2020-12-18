@@ -308,14 +308,6 @@ int main(int argc, char **argv)
                     exit(6);
                 }
                 close(p2p3[0]);
-
-                //Così facendo la read non è bloccante se non ci sono corrispondenze
-                //scrivo almeno un carattere-> da domandare al prof...
-                /*if (write_all(p3p4[1], "\n", 2) < 0)
-                {
-                    perror("write");
-                    exit(EXIT_FAILURE);
-                }*/
                 close(p3p4[1]);
                 for (;;)
                 {   char response2[MAX_REQUEST_SIZE +2];
