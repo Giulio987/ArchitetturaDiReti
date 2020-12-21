@@ -126,43 +126,29 @@ int main(int argc, char **argv)
         }
         else if (pid == 0)
         { /* FIGLIO  per ogni richiesta*/
-            rxb_t rxb1, rxb2, rxb3, rxb4;
+            rxb_t rxb;
             char mail[MAX_REQUEST_SIZE], password[MAX_REQUEST_SIZE], rivista[MAX_REQUEST_SIZE];
-            int pid2, status, p1p2[2], p2p3[2], p3p4[2], countRighe=0;
-            size_t request_len, request_len2, request_len3;
+            int pid2, p1p2[2], p2p3[2], p3p4[2], countRighe;
+            size_t request_len;
             char response[MAX_REQUEST_SIZE], end[4096];
-            size_t response_len;
-            /* Disabilito gestore SIGCHLD */
-            memset(&sa, 0, sizeof(sa));
-            sigemptyset(&sa.sa_mask);
-            sa.sa_handler = SIG_DFL;
-
-            if (sigaction(SIGCHLD, &sa, NULL) == -1)
-            {
-                perror("sigaction");
-                exit(EXIT_FAILURE);
-            }
-
+            /* NON DISABBILITO IL GESTORE */
             /* Chiudo la socket passiva */
             close(sd);
 
-            /* Inizializzo buffer di ricezione */
-            rxb_init(&rxb1, MAX_REQUEST_SIZE);
-            rxb_init(&rxb2, MAX_REQUEST_SIZE);
-            rxb_init(&rxb3, MAX_REQUEST_SIZE);
-            
             /* Avvio ciclo gestione categorie */
             for (;;)
             {
-                rxb_init(&rxb4, MAX_REQUEST_SIZE);
+                /* Inizializzo buffer di ricezione */
+                rxb_init(&rxb, MAX_REQUEST_SIZE);
+                countRighe = 0;
                 /*Ricevo mail*/
                 memset(mail, 0, sizeof(mail));
                 request_len = sizeof(mail) - 1;
 
                 /* Leggo richiesta da Client */
-                if (rxb_readline(&rxb1, ns, mail, &request_len) < 0)
+                if (rxb_readline(&rxb, ns, mail, &request_len) < 0)
                 {
-                    rxb_destroy(&rxb1);
+                    rxb_destroy(&rxb);
                     break;
                 }
                 //mandol'ack
@@ -173,10 +159,10 @@ int main(int argc, char **argv)
                 }
                 //ricevo la password
                 memset(password, 0, sizeof(password));
-                request_len2 = sizeof(password) - 1;
-                if (rxb_readline(&rxb2, ns, password, &request_len2) < 0)
+                request_len = sizeof(password) - 1;
+                if (rxb_readline(&rxb, ns, password, &request_len) < 0)
                 {
-                    rxb_destroy(&rxb2);
+                    rxb_destroy(&rxb);
                     break;
                 }
                 if (autorizza(mail, password) != 1)
@@ -200,10 +186,10 @@ int main(int argc, char **argv)
                 }
                 //ricevo il nome della rivista
                 memset(rivista, 0, sizeof(rivista));
-                request_len3 = sizeof(rivista) - 1;
-                if (rxb_readline(&rxb3, ns, rivista, &request_len3) < 0)
+                request_len = sizeof(rivista) - 1;
+                if (rxb_readline(&rxb, ns, rivista, &request_len) < 0)
                 {
-                    rxb_destroy(&rxb2);
+                    rxb_destroy(&rxb);
                     break;
                 }
                 if (pipe(p1p2) < 0)
@@ -312,10 +298,10 @@ int main(int argc, char **argv)
                 for (;;)
                 {   char response2[MAX_REQUEST_SIZE +2];
                     memset(response, 0, sizeof(response));
-                    response_len = sizeof(response) - 1;
-                    if (rxb_readline(&rxb4, p3p4[0], response, &response_len) < 0)
+                    request_len = sizeof(response) - 1;
+                    if (rxb_readline(&rxb, p3p4[0], response, &request_len) < 0)
                     {
-                        rxb_destroy(&rxb4);
+                        rxb_destroy(&rxb);
                         break;
                     }
                     snprintf(response2,sizeof(response2), "%s\n", response);
@@ -327,11 +313,7 @@ int main(int argc, char **argv)
                     countRighe++;
                 }
                 close(p3p4[0]);
-                
-                //Aspetto nipoti terinare
-                wait(&status);
-                wait(&status);
-                wait(&status);
+
                 snprintf(end, sizeof(end), "Numero di Articoli da revisionare: %d\n", countRighe);
                 if (write_all(ns, end, strlen(end)) < 0)
                 {

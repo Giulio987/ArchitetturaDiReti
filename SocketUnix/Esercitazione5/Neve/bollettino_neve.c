@@ -137,7 +137,7 @@ int main(int argc, char **argv)
             puts(response);
 
             /* Passo a nuova richiesta una volta terminato input Server */
-            if (strcmp(response, "--END---") == 0)
+            if (strcmp(response, "--END--") == 0)
             {
                 break;
             }

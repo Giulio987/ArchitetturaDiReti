@@ -17,7 +17,7 @@
 #include <limits.h>
 
 /* La massima dimensione di una richiesta è di 64KiB */
-#define MAX_REQUEST_SIZE (64 * 1024)
+#define MAX_REQUEST_SIZE (1024)
 
 /* Gestore del segnale SIGCHLD */
 void handler(int signo)
@@ -121,13 +121,13 @@ int main(int argc, char **argv)
         }
         else if (pid == 0)
         { /* FIGLIO  per ogni richiesta*/
-            rxb_t rxb1, rxb2, rxb3;
+            rxb_t rxb;
             char request[MAX_REQUEST_SIZE], request2[MAX_REQUEST_SIZE], media[4096];
-            int pid2, status, p1p2[2], p2p0[2];
-            size_t request_len, request_len2;
+            int pid2, p1p2[2], p2p0[2];
+            size_t request_len;
             char regione[MAX_REQUEST_SIZE + 15];
 
-            /* Disabilito gestore SIGCHLD */
+            /* Disabilito gestore SIGCHLD 
             memset(&sa, 0, sizeof(sa));
             sigemptyset(&sa.sa_mask);
             sa.sa_handler = SIG_DFL;
@@ -137,28 +137,24 @@ int main(int argc, char **argv)
                 perror("sigaction");
                 exit(EXIT_FAILURE);
             }
-
+            */
             /* Chiudo la socket passiva */
             close(sd);
-
-            /* Inizializzo buffer di ricezione */
-            rxb_init(&rxb1, MAX_REQUEST_SIZE);
-            rxb_init(&rxb2, MAX_REQUEST_SIZE);
             
-            /* Avvio ciclo gestione categorie */
+            /* Avvio ciclo gestione richieste */
             for (;;)
             {   int  sum = 0;
-                //DEVO REINIZIALIZZARE IL BUFFER PRIMA DI
-                //UN NUOVO CICLO DI READ
-                rxb_init(&rxb3, MAX_REQUEST_SIZE);
+                /* Inizializzo buffer di ricezione */
+                rxb_init(&rxb, MAX_REQUEST_SIZE);
+
                 /*RICEVO il nome della regione*/
                 memset(request, 0, sizeof(request));
                 request_len = sizeof(request) - 1;
 
                 /* Leggo richiesta da Client */
-                if (rxb_readline(&rxb1, ns, request, &request_len) < 0)
+                if (rxb_readline(&rxb, ns, request, &request_len) < 0)
                 {
-                    rxb_destroy(&rxb1);
+                    rxb_destroy(&rxb);
                     break;
                 }
                     
@@ -173,10 +169,10 @@ int main(int argc, char **argv)
                 }
                 //ricevo il numero di località
                 memset(request2, 0, sizeof(request2));
-                request_len2 = sizeof(request2) - 1;
-                if (rxb_readline(&rxb2, ns, request2, &request_len2) < 0)
+                request_len = sizeof(request2) - 1;
+                if (rxb_readline(&rxb, ns, request2, &request_len) < 0)
                 {
-                    rxb_destroy(&rxb2);
+                    rxb_destroy(&rxb);
                     break;
                 }
                 
@@ -207,7 +203,7 @@ int main(int argc, char **argv)
                     exit(6);
                 }
                 //aspetto nipote 1
-                wait(&status);
+                
                 close(p1p2[1]);
                 //figlio
                 if (pipe(p2p0) < 0)
@@ -245,8 +241,11 @@ int main(int argc, char **argv)
                     exit(8);
                 }
                 //FIGLIO
-                //Aspetto nipoti terminare
-                wait(&status);
+                //Non serve aspettare i nipoti
+                //perche qui dopo vado a fare una lettura inline
+                //QUINDI IN TERMINATED DATA NON SERVONO LE WAIT
+                //wait(&status);
+                //wait(&status);
                 //chiudo pipe aperte
                 close(p1p2[0]);
                 close(p2p0[1]);
@@ -254,12 +253,11 @@ int main(int argc, char **argv)
                 for (;;)
                 {
                     char response[MAX_REQUEST_SIZE], response2[MAX_REQUEST_SIZE +2];
-                    size_t response_len;
                     memset(response, 0, sizeof(response));
-                    response_len = sizeof(response) - 1;  
-                    if (rxb_readline(&rxb3, p2p0[0], response, &response_len) < 0)
+                    request_len = sizeof(response) - 1;  
+                    if (rxb_readline(&rxb, p2p0[0], response, &request_len) < 0)
                     {
-                        rxb_destroy(&rxb3);
+                        rxb_destroy(&rxb);
                         break;
                     }
                     snprintf(response2,sizeof(response2), "%s\n", response);
@@ -279,17 +277,16 @@ int main(int argc, char **argv)
                     {
                         break;
                     }
-
                     if (errno == ERANGE)
                     {
                         if (ret == LONG_MIN)
                         {
-                            // underflow
+                            fprintf(stderr, "Underflow\n");
                             break;
                         }
                         else
                         { // ret == LONG_MAX
-                            // overflow
+                            fprintf(stderr, "Overflow\n");
                             break;
                         }
                     }
@@ -306,7 +303,7 @@ int main(int argc, char **argv)
                     fprintf(stderr, "Numero ricevuto non valido\n");
                     break;
                 }
-
+                
                 if (errno == ERANGE)
                 {
                     if (ret == LONG_MIN)
