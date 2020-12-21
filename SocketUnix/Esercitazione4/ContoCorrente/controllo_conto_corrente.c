@@ -97,7 +97,7 @@ int main(int argc, char **argv)
                 break;
             }
             puts(response);
-            if (strcmp(response, "--END CONNECTION--") == 0){
+            if (strcmp(response, "--END--") == 0){
                 break;
             }
         }
@@ -110,7 +110,7 @@ int main(int argc, char **argv)
             exit(EXIT_FAILURE);
         }
     }
-    
     close(sd);
     return 0;
 }
+

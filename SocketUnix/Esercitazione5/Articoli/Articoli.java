@@ -69,7 +69,7 @@ public class Articoli {
                     System.out.println(buff);
 
                     /* Passo a nuova richiesta una volta terminato input Server */
-                    if (buff.equals("--END CONNECTION--")) {
+                    if (buff.equals("--END--")) {
                         break;
                     }
                 }

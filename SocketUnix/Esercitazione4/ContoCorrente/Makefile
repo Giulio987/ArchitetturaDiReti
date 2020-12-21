@@ -3,9 +3,11 @@ JAVA_TARGETS := $(patsubst %.java,%.class,$(JAVA_SOURCES))
 C_SOURCES    := $(wildcard *.[ch])
 C_TARGETS    := conto_corrente_server controllo_conto_corrente conto_corrente_server_readSemplici
 TODAY        := $(shell date +%Y%m%d)
-ARCHIVE      := rps_$(TODAY).zip
-
-CFLAGS := -std=c17 -O2 -g3 -Wall -Werror -pedantic -D_FORTIFY_SOURCE=2 # -march=native -mtune=native
+ARCHIVE      := conto_corrente_$(TODAY).zip
+#versione per mac 
+CFLAGS := -O2 -g3 -Wall -Werror -pedantic -D_FORTIFY_SOURCE=2 # -march=native -mtune=native
+#Versione linux
+#CFLAGS := -std=c17 -O2 -g3 -Wall -Werror -pedantic -D_FORTIFY_SOURCE=2 # -march=native -mtune=native
 LDFLAGS := -fpie -Wl,-pie 
 
 ifeq ($(USE_LIBUNISTRING),yes)

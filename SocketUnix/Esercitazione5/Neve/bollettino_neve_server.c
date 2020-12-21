@@ -34,7 +34,7 @@ void handler(int signo)
 int main(int argc, char **argv)
 {
     int sd, err, on;
-    char *end_request = "--END CONNECTION--\n", *ack = "ack\n";
+    char *end_request = "--END--\n", *ack = "ack\n";
     struct addrinfo hints, *res;
     struct sigaction sa;
 
