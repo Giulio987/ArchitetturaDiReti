@@ -142,7 +142,7 @@ int main(int argc, char **argv)
         //SEMPRE CONTROLLARE CHE L'ack SIA CORRETTO
         if (strcmp(ackVer, ack) != 0)
         {
-            perror("NON AUTORIZZATO");
+            fprintf(stderr, "%s\n", ack);
             continue;
         }
 
