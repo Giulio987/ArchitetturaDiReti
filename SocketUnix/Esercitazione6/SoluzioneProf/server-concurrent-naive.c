@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
@@ -26,10 +27,10 @@ void handler(int signo)
 
 int autorizza(const char *username, const char *password)
 {
-	(void)username; /* per evitare warning */
-	(void)password; /* per evitare warning */
+        (void)username; /* per evitare warning */
+        (void)password; /* per evitare warning */
 
-	return 1;
+        return 1;
 }
 
 int main(void)
@@ -136,7 +137,7 @@ int main(void)
                                 exit(EXIT_FAILURE);
                         }
 
-			if (autorizza(username, password) != 1) {
+                        if (autorizza(username, password) != 1) {
                                 /* restituisco messaggio di errore */
                                 cc = write(ns, auth_denied, strlen(auth_denied));
                                 if (cc < 0) {
@@ -144,8 +145,8 @@ int main(void)
                                         exit(EXIT_FAILURE);
                                 }
                                 /* il figlio ha svolto correttamente il servizio, e ora termina */
-                                exit(EXIT_SUCCESS); 
-			}
+                                exit(EXIT_SUCCESS);
+                        }
 
                         /* se il flusso di controllo arriva qui vuol dire che il client è autorizzato */
                         cc = write(ns, ack, strlen(ack));
@@ -173,12 +174,18 @@ int main(void)
                                 exit(EXIT_FAILURE);
                         } else if (pid_n1 == 0) {
                                 /* NIPOTE 1 */
-                                char db_file[BUFSIZE];
+                                char db_file[BUFSIZE * 2];
 
+                                /* Chiudo file descriptor inutilizzati */
                                 close(ns);
                                 close(pipe_n1n2[0]);
+
+                                /* Redirigo stdout su pipe_n1n2 */
                                 close(1);
-                                dup(pipe_n1n2[1]);
+                                if (dup(pipe_n1n2[1]) < 0) {
+                                        perror("dup");
+                                        exit(EXIT_FAILURE);
+                                }
                                 close(pipe_n1n2[1]);
 
                                 /* In alternativa a snprintf:
@@ -186,7 +193,9 @@ int main(void)
                                 strcpy(db_file, categoria_macchine);
                                 strcat(db_file, ".txt");
                                 */
-                                snprintf(db_file, sizeof(db_file), "/var/local/macchine_caffé/%s.txt", categoria_macchine);
+                                /* snprintf(db_file, sizeof(db_file), "/var/local/macchine_caffé/%s.txt", categoria_macchine); */
+                                snprintf(db_file, sizeof(db_file), "%s.txt", categoria_macchine);
+
                                 execlp("cut", "cut", "-f", "1,3,4", "-d", ",", db_file, NULL);
                                 exit(EXIT_FAILURE);
                         }
@@ -203,16 +212,26 @@ int main(void)
                                 exit(EXIT_FAILURE);
                         } else if (pid_n2 == 0) {
                                 /* NIPOTE 2 */
-                                close(ns);
 
+                                /* Chiudo file descriptor inutilizzati */
+                                close(ns);
                                 close(pipe_n1n2[1]);
+                                close(pipe_n2f[0]);
+
+                                /* Redirigo stdin da pipe_n1n2 */
                                 close(0);
-                                dup(pipe_n1n2[0]);
+                                if (dup(pipe_n1n2[0]) < 0) {
+                                        perror("dup");
+                                        exit(EXIT_FAILURE);
+                                }
                                 close(pipe_n1n2[0]);
 
-                                close(pipe_n2f[0]);
+                                /* Redirigo stdout su pipe_n2f */
                                 close(1);
-                                dup(pipe_n2f[1]);
+                                if (dup(pipe_n2f[1]) < 0) {
+                                        perror("dup");
+                                        exit(EXIT_FAILURE);
+                                }
                                 close(pipe_n2f[1]);
 
                                 execlp("sort", "sort", "-r", "-n", NULL);
@@ -220,16 +239,26 @@ int main(void)
                         }
 
                         /* FIGLIO */
+
+                        /* Chiudo file descriptor inutilizzati */
                         close(pipe_n1n2[0]);
                         close(pipe_n1n2[1]);
-
                         close(pipe_n2f[1]);
+
+                        /* Redirigo stdin da pipe_n2f */
                         close(0);
-                        dup(pipe_n2f[0]);
+                        if (dup(pipe_n2f[0]) < 0) {
+                                perror("dup");
+                                exit(EXIT_FAILURE);
+                        }
                         close(pipe_n2f[0]);
 
+                        /* Redirigo stdout su socket ns */
                         close(1);
-                        dup(ns);
+                        if (dup(ns) < 0) {
+                                perror("dup");
+                                exit(EXIT_FAILURE);
+                        }
                         close(ns);
 
                         execlp("head", "head", "-n", "10", NULL);
@@ -245,3 +274,4 @@ int main(void)
 
         return 0;
 }
+

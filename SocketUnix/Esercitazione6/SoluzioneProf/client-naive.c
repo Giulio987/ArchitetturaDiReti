@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -37,19 +39,28 @@ int main(int argc, char *argv[])
                 exit(EXIT_FAILURE);
         }
 
-        printf("Inserisci username:\n");
-        scanf("%s", username);
+        printf("Digita username:\n");
+        if (scanf("%s", username) == EOF || errno != 0) {
+                perror("scanf");
+                exit(EXIT_FAILURE);
+        }
 
         do {
                 int sd, cc, i=0;
                 struct addrinfo *ptr;
                 uint8_t buffer[BUFSIZE];
 
-                printf("Inserisci numero giochi:\n");
-                scanf("%s", password);
+                printf("Digita password:\n");
+                if (scanf("%s", password) == EOF || errno != 0) {
+                        perror("scanf");
+                        exit(EXIT_FAILURE);
+                }
 
-                printf("Inserisci tipologia giochi:\n");
-                scanf("%s", categoria_macchine);
+                printf("Digita categoria:\n");
+                if (scanf("%s", categoria_macchine) == EOF || errno != 0) {
+                        perror("scanf");
+                        exit(EXIT_FAILURE);
+                }
 
                 /* Connessione con fallback */
                 for (ptr = res; ptr != NULL; ptr = ptr->ai_next) {
@@ -107,7 +118,10 @@ int main(int argc, char *argv[])
 
                 /* Lettura risultato */
                 while ((cc = read(sd, buffer, sizeof(buffer))) > 0) {
-                        write(1, buffer, cc);
+                        if (write(1, buffer, cc) < 0) {
+                                perror("write");
+                                exit(EXIT_FAILURE);
+                        }
                 }
 
                 if (cc < 0) {
@@ -115,11 +129,14 @@ int main(int argc, char *argv[])
                         exit(EXIT_FAILURE);
                 }
 
-                /* Dimenticarsi di chiudere la socket è un errore molto grave!!! */
+                /* Dimenticarsi di chiudere la socket sarebbe un errore molto grave!!! */
                 close(sd);
 
-                printf("Inserisci username (fine per terminare):\n");
-                scanf("%s", username);
+                printf("Digita username:\n");
+                if (scanf("%s", username) == EOF || errno != 0) {
+                        perror("scanf");
+                        exit(EXIT_FAILURE);
+                }
         } while(strcmp(username, "fine"));
 
         /* Liberiamo la memoria allocata da getaddrinfo */

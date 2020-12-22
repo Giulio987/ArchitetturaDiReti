@@ -2,7 +2,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netdb.h> 
+#include <netdb.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,11 +14,11 @@
 int main(int argc, char **argv)
 {
         uint8_t buffer[2048];
-	uint8_t len[2];
-	char username[512];
-	char password[512];
-	int username_len;
-	int password_len;
+        uint8_t len[2];
+        char username[512];
+        char password[512];
+        int username_len;
+        int password_len;
         int sd, err, nread;
         struct addrinfo hints, *ptr, *res;
 
@@ -41,7 +41,7 @@ int main(int argc, char **argv)
         for (ptr=res; ptr != NULL; ptr=ptr->ai_next) {
                 sd = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
                 /* se la socket fallisce, passo all'indirizzo successivo */
-                if (sd < 0) 
+                if (sd < 0)
                         continue;
 
                 /* se la connect va a buon fine, esco dal ciclo */
@@ -62,29 +62,29 @@ int main(int argc, char **argv)
         /* a questo punto, posso liberare la memoria allocata da getaddrinfo */
         freeaddrinfo(res);
 
-	printf("Digita username:\n");
-	if (scanf("%s", username) == EOF || errno != 0) {
-		perror("scanf");
-		exit(EXIT_FAILURE);
-	}
+        printf("Digita username:\n");
+        if (scanf("%s", username) == EOF || errno != 0) {
+                perror("scanf");
+                exit(EXIT_FAILURE);
+        }
 
-	printf("Digita password:\n");
-	if (scanf("%s", password) == EOF || errno != 0) {
-		perror("scanf");
-		exit(EXIT_FAILURE);
-	}
+        printf("Digita password:\n");
+        if (scanf("%s", password) == EOF || errno != 0) {
+                perror("scanf");
+                exit(EXIT_FAILURE);
+        }
 
-	/* Trasmetto username */
-	username_len = strlen(username);
-	if (username_len > UINT16_MAX) {
-		fprintf(stderr, "Username troppo grande (massimo %d byte)!\n", UINT16_MAX);
-		exit(EXIT_FAILURE);
-	}
+        /* Trasmetto username */
+        username_len = strlen(username);
+        if (username_len > UINT16_MAX) {
+                fprintf(stderr, "Username troppo grande (massimo %d byte)!\n", UINT16_MAX);
+                exit(EXIT_FAILURE);
+        }
 
-	/* Codifico lunghezza stringa1 come intero unsigned a 16 bit in formato
-	 * big endian (AKA network byte order) */
-	len[0] = (username_len & 0xFF00) >> 8;
-	len[1] = (username_len & 0xFF);
+        /* Codifico lunghezza stringa1 come intero unsigned a 16 bit in formato
+         * big endian (AKA network byte order) */
+        len[0] = (uint8_t)((username_len & 0xFF00) >> 8);
+        len[1] = (uint8_t)(username_len & 0xFF);
 
         /* Invio lunghezza username */
 	if (write_all(sd, len, 2) < 0) {
@@ -98,20 +98,20 @@ int main(int argc, char **argv)
                 exit(EXIT_FAILURE);
         }
 
-	/* Trasmetto password */
-	password_len = strlen(password);
-	if (password_len > UINT16_MAX) {
-		fprintf(stderr, "Password troppo grande (massimo %d byte)!\n", UINT16_MAX);
-		exit(EXIT_FAILURE);
-	}
+        /* Trasmetto password */
+        password_len = strlen(password);
+        if (password_len > UINT16_MAX) {
+                fprintf(stderr, "Password troppo grande (massimo %d byte)!\n", UINT16_MAX);
+                exit(EXIT_FAILURE);
+        }
 
-	/* Codifico lunghezza stringa1 come intero unsigned a 16 bit in formato
-	 * big endian (AKA network byte order) */
-	len[0] = (password_len & 0xFF00) >> 8;
-	len[1] = (password_len & 0xFF);
+        /* Codifico lunghezza stringa1 come intero unsigned a 16 bit in formato
+         * big endian (AKA network byte order) */
+        len[0] = (uint8_t)((password_len & 0xFF00) >> 8);
+        len[1] = (uint8_t)(password_len & 0xFF);
 
         /* Invio lunghezza password */
-	if (write_all(sd, len, 2) < 0) {
+        if (write_all(sd, len, 2) < 0) {
                 perror("write");
                 exit(EXIT_FAILURE);
         }
@@ -121,101 +121,101 @@ int main(int argc, char **argv)
                 perror("write");
                 exit(EXIT_FAILURE);
         }
-	
-	/* 
-	[ 0, 2, 'O', 'K' ]
-	[ 0, 2, 'N', 'O' ]
-	*/
 
-	/* Leggo ACK */
-	if (read_all(sd, buffer, 4) < 0) {
+        /*
+        [ 0, 2, 'O', 'K' ]
+        [ 0, 2, 'N', 'O' ]
+        */
+
+        /* Leggo ACK */
+        if (read_all(sd, buffer, 4) < 0) {
                 perror("read");
                 exit(EXIT_FAILURE);
-	}
+        }
 
-	/* Verifico ACK */
-	if (buffer[0] !=  0  || buffer[1] !=  2 ||
-	    buffer[2] != 'O' || buffer[3] != 'K') {
-		printf("Non autorizzato!\n");
-		close(sd);
+        /* Verifico ACK */
+        if (buffer[0] !=  0  || buffer[1] !=  2 ||
+            buffer[2] != 'O' || buffer[3] != 'K') {
+                printf("Non autorizzato!\n");
+                close(sd);
                 exit(EXIT_SUCCESS);
-	}
+        }
 
-	for (;;) {
-		char categoria[512];
-		int categoria_len;
+        for (;;) {
+                char categoria[512];
+                int categoria_len;
 
-		printf("Digita categoria ('fine' per terminare):\n");
+                printf("Digita categoria ('fine' per terminare):\n");
                 if (scanf("%s", categoria) == EOF || errno != 0) {
                         perror("scanf");
                         exit(EXIT_FAILURE);
                 }
 
-		/* Per non aver problemi con write */
-		fflush(stdout);
+                /* Per non aver problemi con write */
+                fflush(stdout);
 
-		if (strcmp(categoria, "fine") == 0) {
-			break;
-		}
+                if (strcmp(categoria, "fine") == 0) {
+                        break;
+                }
 
-		/* Trasmetto categoria */
-		categoria_len = strlen(categoria);
-		if (categoria_len > UINT16_MAX) {
-			fprintf(stderr, "Categoria troppo grande (massimo %d byte)!\n", UINT16_MAX);
-			exit(EXIT_FAILURE);
-		}
+                /* Trasmetto categoria */
+                categoria_len = strlen(categoria);
+                if (categoria_len > UINT16_MAX) {
+                        fprintf(stderr, "Categoria troppo grande (massimo %d byte)!\n", UINT16_MAX);
+                        exit(EXIT_FAILURE);
+                }
 
-		/* Codifico lunghezza stringa1 come intero unsigned a 16 bit in formato
-		 * big endian (AKA network byte order) */
-		len[0] = (categoria_len & 0xFF00) >> 8;
-		len[1] = (categoria_len & 0xFF);
+                /* Codifico lunghezza stringa1 come intero unsigned a 16 bit in formato
+                 * big endian (AKA network byte order) */
+                len[0] = (uint8_t)((categoria_len & 0xFF00) >> 8);
+                len[1] = (uint8_t)(categoria_len & 0xFF);
 
-		/* Invio lunghezza categoria */
-		if (write_all(sd, len, 2) < 0) {
-			perror("write");
-			exit(EXIT_FAILURE);
-		}
+                /* Invio lunghezza categoria */
+                if (write_all(sd, len, 2) < 0) {
+                        perror("write");
+                        exit(EXIT_FAILURE);
+                }
 
-		/* Invio categoria */
-		if (write_all(sd, categoria, categoria_len) < 0) {
-			perror("write");
-			exit(EXIT_FAILURE);
-		}
+                /* Invio categoria */
+                if (write_all(sd, categoria, categoria_len) < 0) {
+                        perror("write");
+                        exit(EXIT_FAILURE);
+                }
 
-		/* Leggo lunghezza risposta */
-		if (read_all(sd, len, 2) < 0) {
-			perror("read");
-			exit(EXIT_FAILURE);
-		}
+                /* Leggo lunghezza risposta */
+                if (read_all(sd, len, 2) < 0) {
+                        perror("read");
+                        exit(EXIT_FAILURE);
+                }
 
-		int risposta_len = len[0] << 8 | len[1];
-		int to_read = risposta_len;
+                size_t risposta_len = ((size_t)len[0]) << 8 | (size_t)len[1];
+                size_t to_read = risposta_len;
 
-		/* Stampo contenuto risposta a video */
-		while (to_read > 0) {
-			size_t bufsize = sizeof(buffer);
-			size_t sz = (to_read < bufsize) ? to_read : bufsize;
+                /* Stampo contenuto risposta a video */
+                while (to_read > 0) {
+                        size_t bufsize = sizeof(buffer);
+                        size_t sz = (to_read < bufsize) ? to_read : bufsize;
 
-			nread = read(sd, buffer, sz);
-			if (nread < 0) {
-				perror("read");
-				exit(EXIT_FAILURE);
-			}
+                        nread = read(sd, buffer, sz);
+                        if (nread < 0) {
+                                perror("read");
+                                exit(EXIT_FAILURE);
+                        }
 
-			if (write_all(1, buffer, nread) < 0) {
-				perror("write");
-				exit(EXIT_FAILURE);
-			}
+                        if (write_all(1, buffer, nread) < 0) {
+                                perror("write");
+                                exit(EXIT_FAILURE);
+                        }
 
-			to_read -= nread;
-		}
+                        to_read -= nread;
+                }
 
-		/* Stampo un \n prima di terminare */
-		if (write(1, "\n", 1) < 0) {
-			perror("write");
-			exit(EXIT_FAILURE);
-		}
-	}
+                /* Stampo un \n prima di terminare */
+                if (write(1, "\n", 1) < 0) {
+                        perror("write");
+                        exit(EXIT_FAILURE);
+                }
+        }
 
         /* Chiudo la socket */
         close(sd);

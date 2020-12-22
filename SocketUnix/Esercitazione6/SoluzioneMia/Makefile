@@ -32,5 +32,5 @@ clean:
 	@rm -rf $(C_TARGETS) $(JAVA_TARGETS) *.zip *.o *.dSYM *~
 
 dist:
-	@zip $(ARCHIVE) $(C_SOURCES) $(JAVA_SOURCES) "Testo Esercizio.txt" README.txt Makefile
+	@zip $(ARCHIVE) $(C_SOURCES) $(JAVA_SOURCES)  Makefile
 
