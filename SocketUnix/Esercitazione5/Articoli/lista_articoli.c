@@ -14,10 +14,11 @@
 
 int main(int argc, char **argv)
 {
-    int sd, err, nread;
+    int sd, err;
     struct addrinfo hints, *ptr, *res;
     rxb_t rxb;
-    char *ackVer = "ack\n";
+    size_t response_len;
+    char *ackVer = "ack";
     char mail[MAX_REQUEST_SIZE], password[MAX_REQUEST_SIZE], ack[2048], nome_rivista[MAX_REQUEST_SIZE];
     /* Controllo argomenti */
     if (argc != 3)
@@ -66,17 +67,19 @@ int main(int argc, char **argv)
     /* A questo punto, posso liberare la memoria allocata da getaddrinfo */
     freeaddrinfo(res);
 
-    rxb_init(&rxb, MAX_REQUEST_SIZE);
-
     for (;;)
     {
+        //Inizio il buffer di ricezione a ogni nuvo ciclo di richieste
+        rxb_init(&rxb, MAX_REQUEST_SIZE);
+
         puts("Inserisci la mail: ");
         if (fgets(mail, sizeof(mail), stdin) == NULL)
         {
             perror("fgets");
             exit(EXIT_FAILURE);
         }
-        if(strcmp(mail, "fine\n") == 0){
+        if (strcmp(mail, "fine\n") == 0)
+        {
             break;
         }
         puts("Inserisci la password ");
@@ -85,7 +88,8 @@ int main(int argc, char **argv)
             perror("fgets");
             exit(EXIT_FAILURE);
         }
-        if(strcmp(password, "fine\n") == 0){
+        if (strcmp(password, "fine\n") == 0)
+        {
             break;
         }
         puts("Inserisci il nome della rivista: ");
@@ -94,7 +98,8 @@ int main(int argc, char **argv)
             perror("fgets");
             exit(EXIT_FAILURE);
         }
-        if(strcmp(nome_rivista, "fine\n") == 0){
+        if (strcmp(nome_rivista, "fine\n") == 0)
+        {
             break;
         }
         /* Invio richiesta al Server compreso il /n*/
@@ -103,40 +108,42 @@ int main(int argc, char **argv)
             perror("write");
             exit(EXIT_FAILURE);
         }
+        //Ricevo il primo ack
         memset(ack, 0, sizeof(ack));
-        //per l'ack è meglio una semplice read
-        if ((nread = read(sd, ack, sizeof(ack) - 1)) < 0)
+        response_len = sizeof(ack) - 1;
+        if (rxb_readline(&rxb, sd, ack, &response_len) < 0)
         {
-            perror("lettura ack");
-            exit(EXIT_FAILURE);
+            rxb_destroy(&rxb);
+            fprintf(stderr, "Connessione chiusa dal server!\n");
+            break;
         }
-        //SEMPRE CONTROLLARE CHE L'ack SIA CORRETTO
+        //SEMPRE CONTROLLARE CHE L'ACK SIA CORRETTO
         if (strcmp(ackVer, ack) != 0)
         {
-            perror("strcmp ack");
+            perror("Ack non corretto");
             exit(EXIT_FAILURE);
         }
-        //Invio il numero di località di interesse
-        
+        //Invio la password
         if (write_all(sd, password, strlen(password)) < 0)
         {
             perror("write");
             exit(EXIT_FAILURE);
         }
-        //SECONDO ACK
-
+        // ACK della password
         memset(ack, 0, sizeof(ack));
-        if ((nread = read(sd, ack, sizeof(ack) - 1)) < 0)
+        response_len = sizeof(ack) - 1;
+        if (rxb_readline(&rxb, sd, ack, &response_len) < 0)
         {
-            perror("lettura ack");
-            exit(EXIT_FAILURE);
+            rxb_destroy(&rxb);
+            fprintf(stderr, "Connessione chiusa dal server!\n");
+            break;
         }
         if (strcmp(ackVer, ack) != 0)
         {
             perror("NON AUTORIZZATO");
             continue;
         }
-        
+
         if (write_all(sd, nome_rivista, strlen(nome_rivista)) < 0)
         {
             perror("write");
@@ -149,7 +156,6 @@ int main(int argc, char **argv)
         for (;;)
         {
             char response[MAX_REQUEST_SIZE];
-            size_t response_len;
 
             memset(response, 0, sizeof(response));
             response_len = sizeof(response) - 1;

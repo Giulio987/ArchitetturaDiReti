@@ -19,7 +19,7 @@ int main(int argc, char **argv)
     rxb_t rxb;
     size_t response_len;
     char *ackVer = "ack";
-    char regione[MAX_REQUEST_SIZE], nLocal[MAX_REQUEST_SIZE], ack[10];
+    char username[MAX_REQUEST_SIZE], password[MAX_REQUEST_SIZE], ack[2048], categoria[MAX_REQUEST_SIZE];
     /* Controllo argomenti */
     if (argc != 3)
     {
@@ -69,31 +69,41 @@ int main(int argc, char **argv)
 
 
     for (;;)
-    {   
-        //Inizio il buffer di ricezione a ogni nuvo ciclo di richieste
+    {
         rxb_init(&rxb, MAX_REQUEST_SIZE);
 
-        puts("Inserisci il nome della regione: ");
-        if (fgets(regione, sizeof(regione), stdin) == NULL)
+        puts("Inserisci l'username: ");
+        if (fgets(username, sizeof(username), stdin) == NULL)
         {
             perror("fgets");
             exit(EXIT_FAILURE);
         }
-        if(strcmp(regione, "fine\n") == 0){
+        if (strcmp(username, "fine\n") == 0)
+        {
             break;
         }
-        puts("Inserisci Il numero di loaclità: ");
-        if (fgets(nLocal, sizeof(nLocal), stdin) == NULL)
+        puts("Inserisci la password ");
+        if (fgets(password, sizeof(password), stdin) == NULL)
         {
             perror("fgets");
             exit(EXIT_FAILURE);
         }
-
-        if(strcmp(nLocal, "fine\n") == 0){
+        if (strcmp(password, "fine\n") == 0)
+        {
+            break;
+        }
+        puts("Inserisci La categoria di macchine: ");
+        if (fgets(categoria, sizeof(categoria), stdin) == NULL)
+        {
+            perror("fgets");
+            exit(EXIT_FAILURE);
+        }
+        if (strcmp(categoria, "fine\n") == 0)
+        {
             break;
         }
         /* Invio richiesta al Server compreso il /n*/
-        if (write_all(sd, regione, strlen(regione)) < 0)
+        if (write_all(sd, username, strlen(username)) < 0)
         {
             perror("write");
             exit(EXIT_FAILURE);
@@ -106,13 +116,37 @@ int main(int argc, char **argv)
             fprintf(stderr, "Connessione chiusa dal server!\n");
             break;
         }
+        //SEMPRE CONTROLLARE CHE L'ack SIA CORRETTO
         if (strcmp(ackVer, ack) != 0)
         {
             perror("Ack non corretto");
             exit(EXIT_FAILURE);
         }
         //Invio il numero di località di interesse
-        if (write_all(sd, nLocal, strlen(nLocal)) < 0)
+
+        if (write_all(sd, password, strlen(password)) < 0)
+        {
+            perror("write");
+            exit(EXIT_FAILURE);
+        }
+        //SECONDO ACK
+
+        memset(ack, 0, sizeof(ack));
+        response_len = sizeof(ack) - 1;
+        if (rxb_readline(&rxb, sd, ack, &response_len) < 0)
+        {
+            rxb_destroy(&rxb);
+            fprintf(stderr, "Connessione chiusa dal server!\n");
+            break;
+        }
+        //SEMPRE CONTROLLARE CHE L'ack SIA CORRETTO
+        if (strcmp(ackVer, ack) != 0)
+        {
+            perror("NON AUTORIZZATO");
+            continue;
+        }
+
+        if (write_all(sd, categoria, strlen(categoria)) < 0)
         {
             perror("write");
             exit(EXIT_FAILURE);

@@ -105,6 +105,7 @@ int main(int argc, char **argv)
 
     for (;;)
     {
+        /*  grep cibo /var/local/conto_corrente.txt |sort -n -r*/
 
         int ns, pid;
 
@@ -126,10 +127,11 @@ int main(int argc, char **argv)
         else if (pid == 0)
         { /* FIGLIO  per ogni richiesta*/
             rxb_t rxb;
-            char mail[MAX_REQUEST_SIZE], password[MAX_REQUEST_SIZE], rivista[MAX_REQUEST_SIZE];
-            int pid2, p1p2[2], p2p3[2], p3p4[2], countRighe;
+            char username[MAX_REQUEST_SIZE], password[MAX_REQUEST_SIZE], categoria[MAX_REQUEST_SIZE];
+            int pid2, p1p2[2], p2p3[2], p3p4[2];
             size_t request_len;
-            char response[MAX_REQUEST_SIZE], end[4096];
+            char percorso[MAX_REQUEST_SIZE + 30];
+            char response[MAX_REQUEST_SIZE];//, end[4096];
             /* NON DISABBILITO IL GESTORE */
             /* Chiudo la socket passiva */
             close(sd);
@@ -139,13 +141,12 @@ int main(int argc, char **argv)
             {
                 /* Inizializzo buffer di ricezione */
                 rxb_init(&rxb, MAX_REQUEST_SIZE);
-                countRighe = 0;
-                /*Ricevo mail*/
-                memset(mail, 0, sizeof(mail));
-                request_len = sizeof(mail) - 1;
+                /*Ricevo username*/
+                memset(username, 0, sizeof(username));
+                request_len = sizeof(username) - 1;
 
                 /* Leggo richiesta da Client */
-                if (rxb_readline(&rxb, ns, mail, &request_len) < 0)
+                if (rxb_readline(&rxb, ns, username, &request_len) < 0)
                 {
                     rxb_destroy(&rxb);
                     break;
@@ -164,7 +165,7 @@ int main(int argc, char **argv)
                     rxb_destroy(&rxb);
                     break;
                 }
-                if (autorizza(mail, password) != 1)
+                if (autorizza(username, password) != 1)
                 {
                     if (write_all(ns, not_autorized, strlen(not_autorized)) < 0)
                     {
@@ -182,14 +183,18 @@ int main(int argc, char **argv)
                         exit(EXIT_FAILURE);
                     }
                 }
-                //ricevo il nome della rivista
-                memset(rivista, 0, sizeof(rivista));
-                request_len = sizeof(rivista) - 1;
-                if (rxb_readline(&rxb, ns, rivista, &request_len) < 0)
+                //ricevo il nome della categoria di macchine
+                memset(categoria, 0, sizeof(categoria));
+                request_len = sizeof(categoria) - 1;
+                if (rxb_readline(&rxb, ns, categoria, &request_len) < 0)
                 {
                     rxb_destroy(&rxb);
                     break;
                 }
+
+                //creo la stringa
+                snprintf(percorso, sizeof(percorso), "/var/local/macchine_caffe/%s.txt", categoria);
+
                 if (pipe(p1p2) < 0)
                 {
                     perror("pipe");
@@ -213,7 +218,7 @@ int main(int argc, char **argv)
                     }
                     close(p1p2[1]);
                     //trovo gli articoli con quella mail
-                    execlp("grep", "grep", mail, "/var/local/revisione.txt", (char *)NULL);
+                    execlp("cut", "cut","-d,", "-f1,3,4", percorso, (char *)NULL);
                     perror("execlp");
                     exit(6);
                 }
@@ -250,7 +255,7 @@ int main(int argc, char **argv)
                     /* Chiudo la socket attiva */
                     close(ns);
                     close(p2p3[1]);
-                    execlp("grep", "grep", rivista, (char *)NULL);
+                    execlp("head", "head", "-n 10", (char *)NULL);
                     perror("execFiglio");
                     exit(8);
                 }
@@ -294,7 +299,8 @@ int main(int argc, char **argv)
                 close(p2p3[0]);
                 close(p3p4[1]);
                 for (;;)
-                {   char response2[MAX_REQUEST_SIZE +2];
+                {
+                    char response2[MAX_REQUEST_SIZE + 2];
                     memset(response, 0, sizeof(response));
                     request_len = sizeof(response) - 1;
                     if (rxb_readline(&rxb, p3p4[0], response, &request_len) < 0)
@@ -302,22 +308,21 @@ int main(int argc, char **argv)
                         rxb_destroy(&rxb);
                         break;
                     }
-                    snprintf(response2,sizeof(response2), "%s\n", response);
+                    snprintf(response2, sizeof(response2), "%s\n", response);
                     if (write_all(ns, response2, strlen(response2)) < 0)
                     {
                         perror("write");
                         exit(EXIT_FAILURE);
                     }
-                    countRighe++;
                 }
                 close(p3p4[0]);
 
-                snprintf(end, sizeof(end), "Numero di Articoli da revisionare: %d\n", countRighe);
-                if (write_all(ns, end, strlen(end)) < 0)
+                //snprintf(end, sizeof(end), "Numero di Articoli da revisionare: %d\n", countRighe);
+                /*if (write_all(ns, end, strlen(end)) < 0)
                 {
                     perror("write");
                     exit(EXIT_FAILURE);
-                }
+                }*/
                 if (write_all(ns, end_request, strlen(end_request)) < 0)
                 {
                     perror("write");
