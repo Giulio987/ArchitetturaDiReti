@@ -15,7 +15,7 @@
 #include "rxb.h"
 #include "utils.h"
 
-/* La massima dimensione di una richiesta è di 64KiB */
+/* La massima dimensione di una richiesta è di 64KiBaas*/
 #define MAX_REQUEST_SIZE (64 * 1024)
 
 /* Gestore del segnale SIGCHLD */
