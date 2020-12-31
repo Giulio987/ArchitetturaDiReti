@@ -19,7 +19,7 @@ public class  Conto_corrente{
                 categoria = tastiera.readLine();
                 if(!categoria.equals("fine")){
                     outSock.write(categoria);
-                    //outSock.newLine(); non ci va per il discorso del /n
+                    //outSock.newLine(); non ci va per il discorso del /n a
                     outSock.flush();
                     while (!(buff = inSock.readLine()).equals("--END CONNECTION--")) {
                         System.out.println(buff);
